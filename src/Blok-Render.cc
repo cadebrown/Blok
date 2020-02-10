@@ -26,7 +26,7 @@ void Mesh::setup() {
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(Vertex), &vertices[0], GL_STATIC_DRAW);  
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, glEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * sizeof(faces[0]), &faces[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * 3 * sizeof(int), &faces[0], GL_STATIC_DRAW);
 
     // set the vertex attribute pointers
 
@@ -59,47 +59,35 @@ Target::Target(int width, int height, int numTex) {
 
     // create a frame buffer object to render to
     glGenFramebuffers(1, &glFBO); 
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, glFBO);
 
+    // set their size to the number of targets we want
     glTex.resize(numTex);
     glColorAttachments.resize(numTex);
 
     // Create the gbuffer textures
     glGenTextures(numTex, &glTex[0]);
-
-    for (int i = 0 ; i < numTex; i++) {
-        glBindTexture(GL_TEXTURE_2D, glTex[i]);
-
-        // default to RGBA in float format, to avoid any potential issues
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
-
-
-        // Poor filtering. Needed !
-
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-        glBindFramebuffer(GL_DRAW_FRAMEBUFFER, glFBO);
-
-        // and just allocate color attachments starting at 0
-        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, glTex[i], 0);
-        // record it
-        glColorAttachments[i] = GL_COLOR_ATTACHMENT0 + i;
-
-    }
-
-    // create depth buffer
     glGenTextures(1, &glDepth);
 
-    // depth buffer render object
+    // perform an error check here
+    opengl_error_check();
+
+
+    for (int i = 0 ; i < numTex; i++) {
+        // initialize the texture
+        glBindTexture(GL_TEXTURE_2D, glTex[i]);
+        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
+        glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, glTex[i], 0);
+        glColorAttachments[i] = GL_COLOR_ATTACHMENT0 + i;
+    }
+
+
+    // depth
     glBindTexture(GL_TEXTURE_2D, glDepth);
-    // initialize it
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
-    // set it as the depth buffer
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
+                NULL);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, glDepth, 0);
 
-    // draw on all these bufers
     glDrawBuffers(numTex, &glColorAttachments[0]);
 
     // make sure we were sucecssful
@@ -111,6 +99,10 @@ Target::Target(int width, int height, int numTex) {
 
     // restore default FBO
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+
+    opengl_error_check();
+
+
 }
 
 
@@ -339,21 +331,19 @@ void Renderer::renderObj(mat4 gT) {
 
     shaders["geometry"]->setMat4("gPVM", gPVM);
 
-    printf("%d,%d\n", mymesh->faces.size() * 3, mymesh->vertices.size());
+    //printf("%d,%d\n", mymesh->faces.size() * 3, mymesh->vertices.size());
+
+    //printf("%i\n", (int)(mymesh->faces.size() * 3));
 
     //for (CDGE::Mesh mesh : mrc->model->meshes) {
-        glBindVertexArray(mymesh->glVAO); 
-        glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
+    glBindVertexArray(mymesh->glVAO); 
+    glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
     //}
 }
 
 void Renderer::render() {
 
-    // perspective and view matrices
-    mat4 gT = glm::perspective(glm::radians(120.0f / 2.0f), (float)width / height, 0.1f, 100.0f) ;
-    gT[2] *= -1.0f;
-    //gT = gT * glm::inverse(camera->gameObject->T.getMat());
-
+    // enable depth testing
     glEnable(GL_DEPTH_TEST); 
     glDepthFunc(GL_LESS);
     
@@ -361,70 +351,40 @@ void Renderer::render() {
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targets["geometry"]->glFBO);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-    // loop to draw geometry
     glUseProgram(shaders["geometry"]->glID);
+
+
+    // draw all these attachments
+    glDrawBuffers(targets["geometry"]->glColorAttachments.size(), &targets["geometry"]->glColorAttachments[0]);
+
+    opengl_error_check();
+
+    // clear it
+
+    /* RENDERING */
+
+    // perspective and view matrices
+    mat4 gT = glm::perspective(glm::radians(120.0f / 2.0f), (float)width / height, 0.1f, 100.0f);
+    gT[2] *= -1.0f;
 
     // renders each 
     //scene.traverse<WireframeRenderer, &WireframeRenderer::travRenderGameObject>(this);
     renderObj(gT);
+    
+    /*for (int i = 0; i < mymesh->vertices.size(); ++i) {
+        printf("%lf,%lf,%lf\n", mymesh->vertices[i].pos.x, mymesh->vertices[i].pos.y, , mymesh->vertices[i].pos.z);
+    }*/
+
+    // clean up and post to the main output
 
     // draw to actual screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["geometry"]->glFBO);
 
+    // read from the 'color' render target
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-
-/*
-    // FBO of our rendertarget
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targets["geometry"]->glFBO);
-    glClear(GL_DEPTH_BUFFER_BIT);
-
-    // initialize our depth testing
-    glEnable(GL_DEPTH_TEST); 
-    //glDepthFunc(GL_LESS);
-    
-
-    clearColor[2] = glfwGetTime() / 10.0f;
-    // set the background
-    glClearBufferfv(GL_COLOR, 0, &clearColor[0]);
-
-    // draw mesh
-    //glm::mat4 gPVM = gT * Tmat;
-    //glActiveTexture(GL_TEXTURE7); // activate the texture unit first before binding texture
-    //glBindTexture(GL_TEXTURE_2D, mrc->tex->glTexture);
-
-    //printf("%d\n", (int)mymesh.faces.size() * 3);
-
-    Texture* mytex = Texture::get("../resources/grass.jpg");
-
-
-    // start using the geometry shader
-    shaders["geometry"]->use();
-
-    glDrawBuffers(targets["geometry"]->glColorAttachments.size(), &targets["geometry"]->glColorAttachments[0]);
-
-    glActiveTexture(GL_TEXTURE0); // activate the texture unit first before binding texture
-    //glBindTexture(GL_TEXTURE_2D, mrc->tex->glTexture);
-    glBindTexture(GL_TEXTURE_2D, mytex->glTex);
-
-    glBindVertexArray(mymesh->glVAO);
-    glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
-
-    glBindVertexArray(0);
-
-    // loop to draw geometry
-    //glUseProgram(shaders["geometry"]->glID);
-
-    // renders each 
-    //scene.traverse<WireframeRenderer, &WireframeRenderer::travRenderGameObject>(this);
-
-    // draw to actual screen
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["geometry"]->glFBO);
-
-    glReadBuffer(GL_COLOR_ATTACHMENT0);
-    glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);*/
+    opengl_error_check();
 
 
 }

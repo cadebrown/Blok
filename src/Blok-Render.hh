@@ -216,16 +216,16 @@ namespace Blok::Render {
             clearColor = vec3(0.1f, 0.1f, 0.1f);
 
             // construct our geometry pass
-            targets["geometry"] = new Target(width, height, 4);
+            targets["geometry"] = new Target(width, height, 1);
 
             // construct the main geometry pass
             shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
 
             // construct basic mesh
             mymesh = new Mesh({
-                { vec3(-1.0f, -1.0f, 0.0f) },
-                { vec3( 1.0f,  -1.0f, 0.0f) },
-                { vec3( 0.0f,  -1.0f, 0.0f) }
+                { vec3(1.0f, 0.0f, 0.0f), vec2(0.0f, 0.0f) },
+                { vec3(0.0f, 1.0f, 0.0f), vec2(1.0f, 0.0f) },
+                { vec3(0.0f, 0.0f, 1.0f), vec2(0.0f, 1.0f) }
             }, {
                 {0, 1, 2}
             });

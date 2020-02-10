@@ -238,6 +238,9 @@ namespace Blok {
         }
     };
 
+
+    void opengl_error_check();
+
 }
 
 #endif /* BLOCC_HH__ */
