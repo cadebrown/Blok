@@ -19,7 +19,6 @@ link_directories(
 
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/src
-    ${CMAKE_CURRENT_SOURCE_DIR}/src/glm-0.9.9.5
     ${GLFW_DIR}/include
     ${ASSIMP_DIR}/include
     ${PORTAUDIO_DIR}/include
