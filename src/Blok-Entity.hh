@@ -1,12 +1,12 @@
-/* Blocc-Entity.hh - basic entity management */
+/* Blok-Entity.hh - basic entity management */
 
 #pragma once
 #ifndef BLOCC_ENTITY_HH__
 #define BLOCC_ENTITY_HH__
 
-#include <Blocc.hh>
+#include <Blok.hh>
 
-namespace Blocc {
+namespace Blok {
 
     class Entity {
 

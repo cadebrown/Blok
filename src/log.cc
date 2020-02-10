@@ -1,6 +1,6 @@
 /* log.c - logging utilities for kscript, including debug levels */
 
-#include <Blocc.hh>
+#include <Blok.hh>
 
 #include <stdarg.h>
 
@@ -11,7 +11,7 @@
 #define RED    "\033[31m"
 #define YELLOW "\033[33m"
 
-namespace Blocc {
+namespace Blok {
 // current logging level
 static int log_level = LOG_INFO;
 

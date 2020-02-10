@@ -1,4 +1,4 @@
 
-add_executable (Blocc Blocc.cc Blocc-Entity.cc Blocc-Render.cc log.cc gl3w/gl3w.c)
+add_executable (Blok  gl3w/gl3w.c  log.cc  Blok-Entity.cc Blok-Render.cc   Blok.cc)
 
-target_link_libraries(Blocc ${depLibs} pthread dl m GL GLU Xrandr Xext X11 asound jack)
+target_link_libraries(Blok ${depLibs} pthread dl m GL GLU Xrandr Xext X11 asound jack)

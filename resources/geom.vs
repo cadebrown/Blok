@@ -1,10 +1,15 @@
 #version 330 core
 
+/* position relative to the local model */
 layout (location = 0) in vec3 aPosition;
+
+/* texture coordinates */
 layout (location = 1) in vec2 aUV;
-layout (location = 2) in vec3 aTangent;
-layout (location = 3) in vec3 aBitangent;
-layout (location = 4) in vec3 aNormal;
+
+/* Tangent/Bitangent/Normal direction vectors */
+layout (location = 2) in vec3 aT;
+layout (location = 3) in vec3 aB;
+layout (location = 4) in vec3 aN;
 
 out vec4 fPosition;
 out vec2 fUV;
@@ -13,11 +18,6 @@ out mat3 fTBN;
 uniform mat4 gM;
 uniform mat4 gPVM;
 
-
 void main() {
-    vec4 aPosV4 = vec4(aPosition.x, aPosition.y, aPosition.z, 1.0);
-    fPosition = gM * aPosV4;
-    fUV = aUV;
-    fTBN = mat3(aTangent, aBitangent, aNormal);
-    gl_Position = gPVM * aPosV4;
+    gl_Position = vec4(aPosition.xy, 0.0, 1.0);
 }

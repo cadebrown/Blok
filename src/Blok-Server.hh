@@ -1,12 +1,12 @@
-/* Blocc-Server.hh - the definition of the server/engine */
+/* Blok-Server.hh - the definition of the server/engine */
 
 #pragma once
 #ifndef BLOCC_SERVER_HH__
 #define BLOCC_SERVER_HH__
 
-#include <Blocc.hh>
+#include <Blok.hh>
 
-namespace Blocc {
+namespace Blok {
 
     class World {
         public:

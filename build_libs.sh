@@ -1,5 +1,5 @@
 #!/bin/sh
-# Blocc/build_libs.sh - a simple script that should be ran once to initialize all the dependencies for Blocc
+# Blok/build_libs.sh - a simple script that should be ran once to initialize all the dependencies for Blok
 
 JOBS=16
 START_DIR=$PWD

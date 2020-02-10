@@ -1,4 +1,4 @@
-/* Blocc.hh - the main header file for the Blocc game/library */
+/* Blok.hh - the main header file for the Blok game/library */
 
 #pragma once
 #ifndef BLOCC_HH__
@@ -32,7 +32,7 @@
 // portaudio libraries
 #include "portaudio.h"
 
-namespace Blocc {
+namespace Blok {
 
     /* ENUM/CONSTANTS */
 
