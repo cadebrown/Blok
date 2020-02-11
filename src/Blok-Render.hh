@@ -16,7 +16,6 @@ namespace Blok::Render {
     // for graphics
     using pixel = vec<4, uint8_t>;
 
-
     // a single vertex data
     struct Vertex {
         // position of the vertex (x, y, z)
@@ -49,6 +48,7 @@ namespace Blok::Render {
 
     };
 
+    // Mesh: a 3D polygon. Implementation found in `render/Mesh.cc`
     class Mesh {
 
         private:
@@ -57,6 +57,9 @@ namespace Blok::Render {
         void setup();
 
         public:
+
+        // load from a file
+        static Mesh* load(const String& fname);
         
         // openGL handles
         uint glVAO, glVBO, glEBO;
@@ -77,7 +80,7 @@ namespace Blok::Render {
 
     };
 
-    // a 2D image, i.e. a texture
+    // Texture: a 2D image. Implementation found in `render/Texture.cc`
     class Texture {
         private:
 
@@ -122,7 +125,7 @@ namespace Blok::Render {
     };
 
 
-    // an OpenGL shader program
+    // Shader: wrapper over the OpenGL shader program, see render/Shader.cc for more
     class Shader {
         
         // the cache of shaders that already exist, keyed on <vs_file, fs_file>
@@ -168,7 +171,7 @@ namespace Blok::Render {
         void setMat4  (const String& name, const mat4& mat);
     };
 
-    // a render target, i.e. a texture that can be rendered to
+    // a render target, i.e. a texture that can be rendered to. See render/Target.cc for more
     class Target {
         public:
 
@@ -222,13 +225,14 @@ namespace Blok::Render {
             shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
 
             // construct basic mesh
-            mymesh = new Mesh({
+            /*mymesh = new Mesh({
                 { vec3(1.0f, 0.0f, 0.0f), vec2(0.0f, 0.0f) },
                 { vec3(0.0f, 1.0f, 0.0f), vec2(1.0f, 0.0f) },
                 { vec3(0.0f, 0.0f, 1.0f), vec2(0.0f, 1.0f) }
             }, {
                 {0, 1, 2}
-            });
+            });*/
+            mymesh = Mesh::load("../resources/suzanne.obj");
 
         }
         

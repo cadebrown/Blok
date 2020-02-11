@@ -19,5 +19,17 @@ uniform mat4 gM;
 uniform mat4 gPVM;
 
 void main() {
-    gl_Position = vec4(aPosition.xy, 0.0, 1.0);
+
+    // normal transform matrix (i.e. not counting offsets, this can be used for transforming normals)
+    mat3 nT = mat3(gPVM);
+
+    // update fragment vars
+    fPosition = gPVM * vec4(aPosition.xyz, 1.0);
+    fUV = aUV;
+    fTBN = mat3(nT * aT, nT * aB, nT * aN);
+
+    // update opengl vars
+    gl_Position = fPosition;
+
+
 }
