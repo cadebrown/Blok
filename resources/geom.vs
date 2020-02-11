@@ -26,7 +26,8 @@ void main() {
     // update fragment vars
     fPosition = gPVM * vec4(aPosition.xyz, 1.0);
     fUV = aUV;
-    fTBN = mat3(nT * aT, nT * aB, nT * aN);
+    //fTBN = mat3(nT * aT, nT * aB, nT * aN);
+    fTBN = mat3(aT, aB, aN);
 
     // update opengl vars
     gl_Position = fPosition;

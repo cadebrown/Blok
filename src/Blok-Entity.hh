@@ -1,10 +1,10 @@
 /* Blok-Entity.hh - basic entity management */
 
 #pragma once
-#ifndef BLOCC_ENTITY_HH__
-#define BLOCC_ENTITY_HH__
+#ifndef BLOK_ENTITY_HH__
+#define BLOK_ENTITY_HH__
 
-#include <Blok.hh>
+#include <Blok-Render.hh>
 
 namespace Blok {
 
@@ -13,13 +13,12 @@ namespace Blok {
         public:
 
         // the location of the entity in world space
-        Coord loc;
+        vec3 loc;
 
         // the current name of the entity
         String name;
 
     };
-
 
     class Player : public Entity {
 
@@ -27,7 +26,7 @@ namespace Blok {
 
         Player(String name) {
             this->name = name;
-            this->loc = Coord(0, 0, 0);
+            this->loc = vec3(0, 0, 0);
         }
 
     };

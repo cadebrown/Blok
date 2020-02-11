@@ -7,6 +7,10 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
+#include <glm/gtx/string_cast.hpp>
+
+#include <iostream>
+
 
 namespace Blok::Render {
 
@@ -17,13 +21,14 @@ static Mesh* processMesh(aiMesh *mesh, const aiScene *scene) {
     List<Vertex> vertices;
     List<Face> faces;
 
-
     for(uint i = 0; i < mesh->mNumVertices; i++) {
         Vertex vertex;
 
         vertex.pos = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
 
         vertex.N = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+
+        std::cout << glm::to_string(vertex.N) << std::endl;
         
         // UVs
         if (mesh->mTextureCoords[0]) {
@@ -121,14 +126,12 @@ Mesh* Mesh::load(const String& fname) {
 
 
 void Mesh::setup() {
-    // create buffers/arrays
-    glGenVertexArrays(1, &glVAO);
-    glGenBuffers(1, &glVBO);
-    glGenBuffers(1, &glEBO);
 
     glBindVertexArray(glVAO);
+    
     // load data into vertex buffers
     glBindBuffer(GL_ARRAY_BUFFER, glVBO);
+
     // A great thing about structs is that their memory layout is sequential for all its items.
     // The effect is that we can simply pass a pointer to the struct and it translates perfectly to a vec3/2 array which
     // again translates to 3/2 floats which translates to a byte array.
@@ -160,6 +163,22 @@ void Mesh::setup() {
     glBindVertexArray(0);
 }
 
+
+// construct a mesh from a list of vertices and faces.
+//   each face is a list of indexes into the vertices array, making up
+//   triangles
+Mesh::Mesh(const List<Vertex>& vertices, const List<Face>& faces) {
+    // just set them equal
+    this->vertices = vertices;
+    this->faces = faces;
+
+    // create OpenGL handles for everything
+    glGenVertexArrays(1, &glVAO);
+    glGenBuffers(1, &glVBO);
+    glGenBuffers(1, &glEBO);
+
+    setup();
+}
 
 
 

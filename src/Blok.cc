@@ -4,12 +4,15 @@
 #include "Blok-Entity.hh"
 #include "Blok-Render.hh"
 #include "Blok-Server.hh"
+#include "Blok-Client.hh"
 
 
 namespace Blok {
 
 bool operator<(ChunkID A, ChunkID B) {
-    return A.X < B.X && A.Z < B.Z;
+    if (A.X == B.X) return A.Z > B.Z;
+    else return A.X > B.X;
+    //return A.X < B.X && A.Z < B.Z;
 }
 
 const char* opengl_error_string(GLenum const err) {
@@ -45,14 +48,13 @@ void opengl_error_check() {
     GLenum err;
     while ((err = glGetError()) != GL_NO_ERROR) {
         b_warn("OpenGL Error[%i]: %s", (int)err, opengl_error_string(err));
+        exit(-1);
     }
 }
 
-}
+// initialize everyting in Blok
+bool initAll() {
 
-using namespace Blok;
-
-int main(int argc, char** argv) {
 
     b_log_level_set(LOG_TRACE);
 
@@ -62,13 +64,13 @@ int main(int argc, char** argv) {
     // make sure our target version is supported
     if (gl3wIsSupported(3, 3) != 0) {
         b_error("Failed to init OpenGL v3.3");
-        return -1;
+        return false;
     }
 
     // initialize GLFW, for windows/etc
     if (!glfwInit()) {
         b_error("Failed to initialize GLFW!");
-        return -1;
+        return false;
     }
 
     glfwSetErrorCallback(glfw_errorcallback);
@@ -77,54 +79,78 @@ int main(int argc, char** argv) {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-
+/*
     // create the window
     auto window = glfwCreateWindow(640, 480, "Blok", nullptr, nullptr);
     if (!window) {
         b_error("Failed to create window with GLFW!");
-        return -1;
+        return false;
     }
 
     // set it to focused
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1); // 1 = vsync, 0 = as fast as possible
-    
+    */
+
+   
     // various initializations
     glfwSetTime(0.0);
     opengl_error_check();
 
-    b_info("Initialized with: OpenGL: %s, GLSL: %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
+    return true;
+}
+
+}
+
+using namespace Blok;
+
+int main(int argc, char** argv) {
+
+    // initialize blok
+    initAll();
 
     // create a server
     Server* server = new Server();
+
+    // create a client attached to that server
+    Client* client = new Client(server, 640, 480);
 
     // create a world to render
     World* world = new World();
     server->addWorld("world", world);
 
-    server->loadChunk(world, {0, 0});
+    //server->loadChunk(world, {0, 0});
+    // put some info
+    b_info("Initialized with: OpenGL: %s, GLSL: %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-    Render::Renderer* rend = new Render::Renderer(640, 480);
 
-    while (true) {
-        // calculate the frame
-        rend->render();
+    // just update
+    client->renderer->pos = vec3(0, 20, 0);
 
-        // update the frame
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+    int n = 0;
+    double ltime = glfwGetTime();
 
-        // perform error checks
-        opengl_error_check();
+    float speed = 100;
 
-        // see if the app should close or not
-        if (glfwWindowShouldClose(window)) {
-            return 0;
+    do {
+        double ctime = glfwGetTime();
+        double dt = ctime - ltime;
+
+        if (client->keysPressed[GLFW_KEY_W]) {
+            client->renderer->pos += speed * (float)dt * client->renderer->forward;
         }
+        if (client->keysPressed[GLFW_KEY_S]) {
+            client->renderer->pos -= speed * (float)dt * client->renderer->forward;
+        }
+        client->yaw += dt * 0.4f * -client->mouseDelta.x;
+        client->pitch += dt * 0.4f * client->mouseDelta.y;
 
+        //client->renderer->forward = glm::rotate((float)dt * 0.4f * -client->mouseDelta.x, vec3(0, 1, 0)) * vec4(client->renderer->forward, 0);
+        //client->renderer->forward = glm::rotate((float)dt * 0.4f * client->mouseDelta.y, vec3(0, 0, 1)) * vec4(client->renderer->forward, 0);
 
-    }
-
+        printf("fps: %lf\n", 1 / dt);
+        ltime = ctime;
+    } while (client->frame());
 
     return 0;
 }

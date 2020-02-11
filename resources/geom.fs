@@ -21,7 +21,7 @@ void main() {
     vec3 N = normalize(fTBN[2]);
     vec3 ldir = normalize(vec3(0, -1, 1));
 
-    gColor = col * max(0, -dot(N, ldir));
+    gColor = col * (.3 + .7 * max(0, -dot(N, ldir)));
     gPosition = fPosition;
     gUV = vec4(fUV, 0.0f, 0.0f);
     gNormal = vec4(N, 0.0f);

@@ -1,8 +1,8 @@
 /* Blok.hh - the main header file for the Blok game/library */
 
 #pragma once
-#ifndef BLOCC_HH__
-#define BLOCC_HH__
+#ifndef BLOK_HH__
+#define BLOK_HH__
 
 /* C libraries */
 #include <stdio.h>
@@ -20,6 +20,10 @@
 #include <glm/gtx/string_cast.hpp>
 #include <glm/gtx/quaternion.hpp>
 */
+
+// glm lib
+#include <glm/vec3.hpp>
+
 // assimp libraries, for asset importing
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -33,6 +37,8 @@
 #include "portaudio.h"
 
 namespace Blok {
+
+    using namespace glm;
 
     /* ENUM/CONSTANTS */
 
@@ -85,23 +91,18 @@ namespace Blok {
     // the string type
     using String = std::string;
 
-    // a 3D coordinate
-    class Coord {
-        public:
-        double x, y, z;
-
-        Coord(double x=0.0, double y=0, double z=0) {
-            this->x = x;
-            this->y = y;
-            this->z = z;
-        }
-    };
-
     // a chunk ID is the x, z macro coordinates
     struct ChunkID { int X; int Z; };
 
     // so that ChunkIDs are well ordered
     bool operator<(ChunkID A, ChunkID B);
+
+    /* FORWARD DECLARATIONS */
+
+    class Entity;
+
+
+
 
     // information of a single block in the world
     struct BlockInfo {
@@ -200,47 +201,10 @@ namespace Blok {
     #define b_error(...) b_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 
 
-    // class for defining world generation
-    class WorldGenerator {
-
-        //Map<Pair<int, int>, Chunk*> chunk_cache;
-
-        public:
-
-        // method to generate a single chunk, given the chunk index x and z
-        // the position of the given chunk is CHUNK_SIZE * cx, 0 through CHUNK_HEIGHT, CHUNK_SIZE * cz
-        virtual Chunk* getChunk(ChunkID id) = 0;
-
-
-    };
-
-    class DefaultWorldGenerator : public WorldGenerator {
-        public:
-
-
-        Chunk* getChunk(ChunkID id) {
-            // for now, just return a very basic chunk with Y <= 20 being stone, and everything else being empty
-            Chunk* res = new Chunk(BIOME_NONE);
-
-            for (int x = 0; x < CHUNK_SIZE; ++x) {
-                for (int z = 0; z < CHUNK_SIZE; ++z) {
-                    for (int y = 0; y < CHUNK_HEIGHT; ++y) {
-                        if (y <= 20) {
-                            res->get(x, y, z) = BlockInfo(ID_STONE);
-                        } else {
-                            res->get(x, y, z) = BlockInfo(ID_NONE);
-                        }
-                    }
-                }
-            }
-
-            return res;
-        }
-    };
-
-
     void opengl_error_check();
 
 }
 
-#endif /* BLOCC_HH__ */
+
+
+#endif /* BLOK_HH__ */

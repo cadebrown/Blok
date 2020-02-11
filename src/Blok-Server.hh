@@ -1,10 +1,11 @@
 /* Blok-Server.hh - the definition of the server/engine */
 
 #pragma once
-#ifndef BLOCC_SERVER_HH__
-#define BLOCC_SERVER_HH__
+#ifndef BLOK_SERVER_HH__
+#define BLOK_SERVER_HH__
 
 #include <Blok.hh>
+#include <Blok-Generator.hh>
 
 namespace Blok {
 
@@ -24,7 +25,6 @@ namespace Blok {
         String getName() {
             return "world";
         }
-
 
         Chunk* getChunk(ChunkID chunk) {
             auto got = cache.find(chunk);
@@ -61,11 +61,13 @@ namespace Blok {
         }
 
         // ensure the chunk is loaded
-        void loadChunk(World* world, ChunkID chunk) {
+        Chunk* loadChunk(World* world, ChunkID chunk) {
             if (loaded.find({ world, chunk }) == loaded.end()) {
                 b_trace("Loaded chunk %s<%i,%i>", world->getName().c_str(), (int)chunk.X, (int)chunk.Z);
                 // not found in loaded, so generate/load it
-                loaded[{ world, chunk }] = world->getChunk(chunk);
+                return loaded[{ world, chunk }] = world->getChunk(chunk);
+            } else {
+                return loaded[{ world, chunk }];
             }
         }
 

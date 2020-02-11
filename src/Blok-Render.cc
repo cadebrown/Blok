@@ -1,6 +1,7 @@
 /* Blok-Render.cc - rendering code */
 
 #include <Blok-Render.hh>
+#include <Blok-Entity.hh>
 
 // assimp libraries, for asset importing
 #include <assimp/Importer.hpp>
@@ -9,11 +10,73 @@
 
 namespace Blok::Render {
 
+void Renderer::renderEntity(Entity* entity) {
+    // construct the model matrix
+    mat4 gM = glm::translate(entity->loc);
+
+    // combine all 3 to get PVM
+    mat4 gPVM = gP * gV * gM;
+
+    // now, set the diffuse texture
+    shaders["geometry"]->setInt("texDiffuse", 7);
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, Texture::get("../resources/grass.jpg")->glTex);
+
+    // and set matrices
+    shaders["geometry"]->setMat4("gM", gM);
+    shaders["geometry"]->setMat4("gPVM", gPVM);
+
+
+    // draw the actual mesh
+    glBindVertexArray(mymesh->glVAO); 
+    glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
+
+}
+
+
+// render a chunk of data
+void Renderer::renderChunk(ChunkID id, Chunk* chunk) {
+
+    // start of the chunk
+    vec3 chunk_pos(id.X * CHUNK_SIZE, 0, id.Z * CHUNK_SIZE);
+
+    mat4 gPV = gP * gV;
+
+    // now, set the diffuse texture
+    shaders["geometry"]->setInt("texDiffuse", 7);
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, Texture::get("../resources/grass.jpg")->glTex);
+    glBindVertexArray(mymesh->glVAO); 
+
+    for (int x = 0; x < CHUNK_SIZE; ++x) {
+        for (int z = 0; z < CHUNK_SIZE; ++z) {
+            for (int y = 0; y < CHUNK_HEIGHT; ++y) {
+                if (chunk->get(x, y, z).id != ID_NONE) {
+                    // do a cube
+                    // construct the model matrix
+                    mat4 gM = glm::translate(chunk_pos + vec3(x, y, z));
+
+                    // combine all 3 to get PVM
+                    mat4 gPVM = gPV * gM;
+
+                    // and set matrices
+                    shaders["geometry"]->setMat4("gM", gM);
+                    shaders["geometry"]->setMat4("gPVM", gPVM);
+
+                    // draw the actual mesh
+                    glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
+
+                }
+            }
+        }
+    }
+
+}
 
 void Renderer::renderObj(mat4 gT) {
-        // draw mesh
+    // draw mesh
 
-    mat4 gM = glm::translate(vec3(0, 0, 6.5f)) * glm::rotate((float)glfwGetTime(), vec3(0, 1, 0));
+    mat4 gM = glm::translate(vec3(0, 0, 0)) * glm::rotate((float)glfwGetTime(), vec3(0, 1, 0));
     glm::mat4 gPVM = gT * gM;
     glActiveTexture(GL_TEXTURE7); // activate the texture unit first before binding texture
     glBindTexture(GL_TEXTURE_2D, Texture::get("../resources/grass.jpg")->glTex);
@@ -36,7 +99,9 @@ void Renderer::renderObj(mat4 gT) {
     //}
 }
 
-void Renderer::render() {
+
+// begin the rendering sequence
+void Renderer::render_start() {
 
     // enable depth testing
     glEnable(GL_DEPTH_TEST); 
@@ -48,36 +113,21 @@ void Renderer::render() {
 
     glUseProgram(shaders["geometry"]->glID);
 
-
     // draw all these attachments
     glDrawBuffers(targets["geometry"]->glColorAttachments.size(), &targets["geometry"]->glColorAttachments[0]);
 
+    // calculate the perspective matrix
+    gP = glm::perspective(glm::radians(FOV / 2.0f), (float)width / height, 0.25f, 250.0f);
+
+    // calculate the view matrix
+    gV = glm::lookAt(pos, pos + forward, up);
+
     opengl_error_check();
 
-    // clear it
+}
 
-    /* RENDERING */
-
-    // perspective and view matrices
-    mat4 gP = glm::perspective(glm::radians(120.0f / 2.0f), (float)width / height, 0.1f, 100.0f);
-    //gP[2] *= -1.0f;
-
-    mat4 gV = glm::lookAt(vec3(0, 0, 10), vec3(0, 0, 0), vec3(0, 1, 0));
-
-   //gV = glm::inverse(gV);
-
-
-    mat4 gPV = gP * gV;
-
-    // renders each 
-    //scene.traverse<WireframeRenderer, &WireframeRenderer::travRenderGameObject>(this);
-    renderObj(gPV);
-    
-    /*for (int i = 0; i < mymesh->vertices.size(); ++i) {
-        printf("%lf,%lf,%lf\n", mymesh->vertices[i].pos.x, mymesh->vertices[i].pos.y, , mymesh->vertices[i].pos.z);
-    }*/
-
-    // clean up and post to the main output
+// finalize the rendering sequence
+void Renderer::render_end() {
 
     // draw to actual screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -87,9 +137,7 @@ void Renderer::render() {
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
     opengl_error_check();
-
 }
-
 
 
 };
