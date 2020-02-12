@@ -6,8 +6,12 @@
 #include "Blok-Server.hh"
 #include "Blok-Client.hh"
 
+#include <chrono>
 
 namespace Blok {
+
+// initialize the place to look for everything:
+List<String> paths = { ".", ".." };
 
 bool operator<(ChunkID A, ChunkID B) {
     if (A.X == B.X) return A.Z > B.Z;
@@ -50,6 +54,18 @@ void opengl_error_check() {
         b_warn("OpenGL Error[%i]: %s", (int)err, opengl_error_string(err));
         exit(-1);
     }
+}
+
+
+double getTime() {
+    // get the start time as a static var
+    static auto start_time = std::chrono::high_resolution_clock::now();
+    auto current_time = std::chrono::high_resolution_clock::now();
+
+
+    std::chrono::duration<double> elapsed = current_time - start_time;
+
+    return elapsed.count();
 }
 
 // initialize everyting in Blok
@@ -125,16 +141,18 @@ int main(int argc, char** argv) {
 
 
     // just update
-    client->renderer->pos = vec3(0, 20, 0);
+    client->renderer->pos = vec3(0, 14, -10);
 
     int n = 0;
-    double ltime = glfwGetTime();
+    double ltime = getTime();
 
     float speed = 100;
 
     do {
-        double ctime = glfwGetTime();
+    
+        double ctime = getTime();
         double dt = ctime - ltime;
+        ltime = ctime;
 
         if (client->keysPressed[GLFW_KEY_W]) {
             client->renderer->pos += speed * (float)dt * client->renderer->forward;
@@ -142,14 +160,17 @@ int main(int argc, char** argv) {
         if (client->keysPressed[GLFW_KEY_S]) {
             client->renderer->pos -= speed * (float)dt * client->renderer->forward;
         }
-        client->yaw += dt * 0.4f * -client->mouseDelta.x;
+        client->yaw += dt * 0.4f * client->mouseDelta.x;
         client->pitch += dt * 0.4f * client->mouseDelta.y;
 
         //client->renderer->forward = glm::rotate((float)dt * 0.4f * -client->mouseDelta.x, vec3(0, 1, 0)) * vec4(client->renderer->forward, 0);
         //client->renderer->forward = glm::rotate((float)dt * 0.4f * client->mouseDelta.y, vec3(0, 0, 1)) * vec4(client->renderer->forward, 0);
 
-        printf("fps: %lf\n", 1 / dt);
-        ltime = ctime;
+        if (client->N_frames % 20 == 0) {
+
+            printf("fps: %lf\n", 1 / dt);
+        }
+
     } while (client->frame());
 
     return 0;

@@ -1,4 +1,8 @@
-/* Blok.hh - the main header file for the Blok game/library */
+/* Blok.hh - a minecraft-style voxel game 
+ *
+ * 
+ *
+ */
 
 #pragma once
 #ifndef BLOK_HH__
@@ -14,36 +18,34 @@
 #include <string>
 #include <map>
 
-// glm libraries
-/*#include <glm/gtc/matrix_transform.hpp>
-#include <glm/gtx/transform.hpp>
-#include <glm/gtx/string_cast.hpp>
-#include <glm/gtx/quaternion.hpp>
-*/
-
-// glm lib
+/* GLM (matrix & vector library) */
 #include <glm/vec3.hpp>
 
-// assimp libraries, for asset importing
+/* Assimp (Asset Importing Library) */
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-// GLFW libraries
+/* GLFW (Window Library) */
 #include <gl3w/gl3w.h>
 #include <GLFW/glfw3.h>
 
-// portaudio libraries
+/* PortAudio (Audio Input/Output Library) */
 #include "portaudio.h"
+
 
 namespace Blok {
 
+
+    /* Other namespaces */
+
+    // so Blok::vec is glm::vec
     using namespace glm;
 
-    /* ENUM/CONSTANTS */
 
-    // the chunk size (the width/the height, they are always the same)
-    // chunks are always sqaure
+    /* Global Constants */
+
+    // the X/Z chunk size (in blocks and/or meters)
     #define CHUNK_SIZE    16
 
     // the height of each chunk, default to 256
@@ -97,11 +99,12 @@ namespace Blok {
     // so that ChunkIDs are well ordered
     bool operator<(ChunkID A, ChunkID B);
 
+    // list of resource paths to try and find textures
+    extern List<String> paths;
+
     /* FORWARD DECLARATIONS */
 
     class Entity;
-
-
 
 
     // information of a single block in the world
@@ -161,10 +164,13 @@ namespace Blok {
 
     };
 
-    /* basic logging functionality */
 
+    /* misc library functionality */
 
-    /* macros/definitions */
+    // get the current time (in seconds) since initialization
+    double getTime();
+
+    /* logging*/
 
     // enumeration for levels of logging, from least important to most important
     enum {
@@ -200,11 +206,8 @@ namespace Blok {
     // prints a error message, assuming the current log level allows for it
     #define b_error(...) b_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 
-
     void opengl_error_check();
 
 }
-
-
 
 #endif /* BLOK_HH__ */

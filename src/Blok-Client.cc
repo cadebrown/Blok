@@ -90,12 +90,14 @@ bool Client::frame() {
 
     // tell our renderer what to do
     renderer->render_start();
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
+    int N = 4;
     // render all these chunks
-    for (int X = -1; X <= 1; ++X) {
-        for (int Z = -1; Z <= 1; ++Z) {
+    for (int X = -N; X <= N; ++X) {
+        for (int Z = -N; Z <= N; ++Z) {
             
+            // get the current local chunk ID
             ChunkID cid = {X, Z};
 
             // get our chunk
@@ -123,7 +125,6 @@ bool Client::frame() {
     glfwSwapBuffers(window);
     glfwPollEvents();
 
-
     // now, get the cursor position
     lastMousePos = mousePos;
 
@@ -134,27 +135,24 @@ bool Client::frame() {
     wasFocused = isFocused;
     isFocused = glfwGetWindowAttrib(window, GLFW_FOCUSED);
 
+    // calculate the mouse movement, setting to 0 if it was flicked to it
+    // this is to prevent large spikes in delta
     mouseDelta = (N_frames < 3 || isFocused == 0 || wasFocused == 0) ? glm::vec2(0.0f, 0.0f) : mousePos - lastMousePos;
-    printf("MDX: %f\n", mouseDelta);
 
-    //if (!_mouseHasBeenNonzero && glm::length(_mousePosition) >= 1.0f) _mouseHasBeenNonzero = true;
-
-
+    // count the current frame
     N_frames++;
+
+    // check any opengl errors
+    opengl_error_check();
 
     // see if the app should close or not
     if (glfwWindowShouldClose(window)) {
         return false;
     }
 
-
-    opengl_error_check();
-
     return true;
 
 }
-
-
 
 
 };

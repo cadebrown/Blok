@@ -28,8 +28,33 @@ float get_f();
 double get_d();
 
 
+/* PerlinGen - a perlin noise generator */
+class PerlinGen {
+
+    public:
+
+    // the seed of the generator
+    uint seed;
+
+    // a permutation array
+    List<int> perm;
+
+    // get a single sample of noise (omit the Z parameter to generate just 2D noise)
+    double noise(double x, double y, double z=0.5);
+
+    PerlinGen(uint seed=42);
+
+    private:
+
+    // internal helper methods
+    double fade(double t);
+	double lerp(double t, double a, double b);
+	double grad(int hash, double x, double y, double z);
+
 
 };
+
+}
 
 
 #endif

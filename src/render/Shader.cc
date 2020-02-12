@@ -12,10 +12,6 @@ namespace Blok::Render {
 // declare the cache of existing shaders
 Map<Pair<String, String>, Shader*> Shader::cache;
 
-// map of paths to try
-List<String> Shader::paths = { ".", ".." };
-
-
 // internal method to check whether there were any problems with the shader, and if so,
 // print and error and return false. Retrun true if there was no program
 // type can be "VERTEX", "FRAGMENT", "GEOMETRY", or "PROGRAM"

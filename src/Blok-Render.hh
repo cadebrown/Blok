@@ -14,7 +14,7 @@ namespace Blok::Render {
     // use the GLM library 
     using namespace glm;
 
-    // for graphics
+    // a single RGBA pixel value
     using pixel = vec<4, uint8_t>;
 
     // a single vertex, including all neccessary data
@@ -63,9 +63,10 @@ namespace Blok::Render {
         //   each face is a list of indexes into the vertices array, making up
         //   triangles
         Mesh(const List<Vertex>& vertices, const List<Face>& faces);
+
     };
 
-    // Texture: a 2D image. Implementation found in `render/Texture.cc`
+    // Texture: a 2D image, bit map style. Implementation found in `render/Texture.cc`
     class Texture {
         private:
 
@@ -74,50 +75,50 @@ namespace Blok::Render {
 
         public:
 
-        static Texture* get(String path) {
-            if (cache.find(path) == cache.end()) {
-                return cache[path] = new Texture(path);
-            } else {
-                return cache[path];
-            }
-        }
+        // load a new copy of the texture
+        // NOTE: the caller is responsible for deleting the texture after it is done
+        //         , but it is allowed to modify the _pixels
+        static Texture* loadCopy(const String& path);
 
-        // the openGL handle
-        uint glTex;
+        // load a constant, shared reference of the texture
+        static Texture* loadConst(const String& path);
 
-        // the dimensions
+
+        // member variables
+
+        // the size of the image, in pixels
         int width, height;
+
+        // the OpenGL handle for the texture object
+        uint glTex;
 
         // whether not something has been updated
         bool _flag;
 
         // the array of _pixel
-        pixel * _pixels;
+        pixel* pixels;
 
-        // don't use this; use Texture::get
+
+
+        // don't use this constructor, please use Texture::loadCopy if you need your own copy
+        //   of the texture, or Texture::loadConst if you will not be modifying the texture
         Texture(String path);
 
-        pixel operator()(int row, int col) const {
-            return _pixels[col + row * width];
-        }
 
-        void operator()(int row, int col, pixel px) {
-            // keep track if there's been modifications
-            _flag = true;
-            _pixels[col + row * width] = px;
+
+        // get a reference to a given pixel from the array
+        pixel& get(int row, int col) {
+            return pixels[width * row + col];
         }
 
     };
 
 
-    // Shader: wrapper over the OpenGL shader program, see render/Shader.cc for more
+    // Shader: a shader program, for drawing input points, see render/Shader.cc for more
     class Shader {
         
         // the cache of shaders that already exist, keyed on <vs_file, fs_file>
         static Map<Pair<String, String>, Shader*> cache;
-
-        // list of paths to look for shaders
-        static List<String> paths;
 
         public:
 
@@ -178,9 +179,10 @@ namespace Blok::Render {
     };
 
 
-    // actual class that does the rendering
+    // Renderer : the main class that does the rendering
     class Renderer {
         public:
+
 
         // the output width & height
         int width, height;
@@ -211,6 +213,15 @@ namespace Blok::Render {
 
         // the current matrices cache (projection, view)
         mat4 gP, gV;
+
+
+        // the current queue of things that need to be rendered in the current frame
+        struct RendererQueue {
+            
+            // all requested chunks that need to be rendered
+            Map<ChunkID, Chunk*> chunks;
+
+        } queue;
 
         // construct a new Renderer
         Renderer(int width, int height) {
@@ -248,8 +259,8 @@ namespace Blok::Render {
             mymesh = Mesh::load("../resources/DefaultCube.obj");
 
         }
-        
 
+        // deconstruct the renderer
         ~Renderer() {
             // remove all created rendertargets
             for (auto keyval : targets) {
@@ -257,19 +268,27 @@ namespace Blok::Render {
             }
         }
 
-        // render a single entity
-        void renderEntity(Entity* entity);
 
-        // render an entire chunk
-        void renderChunk(ChunkID id, Chunk* chunk);
-
-        void renderObj(mat4 gT);
 
         // begin the rendering sequence
         void render_start();
 
+        // add a chunk to be rendered
+        // NOTE: must be between `render_start()` and `render_end()`!
+        void renderChunk(ChunkID id, Chunk* chunk);
+
         // finalize the rendering sequence
         void render_end();
+
+
+
+        // render a single entity
+        //void renderEntity(Entity* entity);
+
+        // render an entire chunk
+        //void renderChunk(ChunkID id, Chunk* chunk);
+
+
 
     };
 

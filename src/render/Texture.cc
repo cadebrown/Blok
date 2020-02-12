@@ -8,15 +8,33 @@
 
 namespace Blok::Render {
 
-// initialize the cache
+// initialize the cache for shared texture loads
 Map<String, Texture*> Texture::cache;
+
+// load a new copy of the texture
+Texture* Texture::loadCopy(const String& path) {
+    return new Texture(path);
+}
+
+// load a constant copy of the texture
+Texture* Texture::loadConst(const String& path) {
+    if (cache.find(path) == cache.end()) {
+        return cache[path] = new Texture(path);
+    } else {
+        // we already loaded it, so just return a ref to it
+        return cache[path];
+    }
+}
+
+
+
 
 // read a texture from a given path
 Texture::Texture(String path) {
     int _w, _h, _channels;
-    _pixels = (pixel *)stbi_load(path.c_str(), &_w, &_h, &_channels, 4); 
+    pixels = (pixel *)stbi_load(path.c_str(), &_w, &_h, &_channels, 4); 
     width = _w, height = _h;
-    if (_pixels == NULL) {
+    if (pixels == NULL) {
         b_error("Failed to read image file '%s'", path.c_str());
     }
     glGenTextures(1, &glTex);
@@ -27,7 +45,7 @@ Texture::Texture(String path) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, _pixels);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     glGenerateMipmap(GL_TEXTURE_2D); 
 
     b_debug("Loaded texture '%s'", path.c_str());
