@@ -13,6 +13,7 @@ namespace Blok {
 // initialize the place to look for everything:
 List<String> paths = { ".", ".." };
 
+
 bool operator<(ChunkID A, ChunkID B) {
     if (A.X == B.X) return A.Z > B.Z;
     else return A.X > B.X;
@@ -72,7 +73,7 @@ double getTime() {
 bool initAll() {
 
 
-    b_log_level_set(LOG_TRACE);
+    b_log_level_set(LOG_DEBUG);
 
     // initialize openGL stuffs
     gl3wInit();
@@ -129,7 +130,7 @@ int main(int argc, char** argv) {
     Server* server = new Server();
 
     // create a client attached to that server
-    Client* client = new Client(server, 640, 480);
+    Client* client = new Client(server, 800, 600);
 
     // create a world to render
     World* world = new World();
@@ -139,7 +140,6 @@ int main(int argc, char** argv) {
     // put some info
     b_info("Initialized with: OpenGL: %s, GLSL: %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 
-
     // just update
     client->renderer->pos = vec3(0, 14, -10);
 
@@ -147,19 +147,49 @@ int main(int argc, char** argv) {
     double ltime = getTime();
 
     float speed = 100;
+    client->renderer->pos = vec3(8, 40, 8);
 
     do {
-    
+        
+        vec3 moveZ = client->renderer->forward;
+        moveZ = normalize(moveZ);
+
+        vec3 moveX = glm::cross(client->renderer->up, client->renderer->forward);
+        moveX.y = 0;
+        moveX = normalize(moveX);
+
         double ctime = getTime();
         double dt = ctime - ltime;
         ltime = ctime;
-
         if (client->keysPressed[GLFW_KEY_W]) {
-            client->renderer->pos += speed * (float)dt * client->renderer->forward;
+            client->renderer->pos += speed * (float)dt * moveZ;
         }
         if (client->keysPressed[GLFW_KEY_S]) {
-            client->renderer->pos -= speed * (float)dt * client->renderer->forward;
+            client->renderer->pos -= speed * (float)dt * moveZ;
         }
+
+        /*
+
+        if (client->keysPressed[GLFW_KEY_SPACE]) {
+            client->renderer->pos += vec3(0, 4, 0);
+        }  
+        ChunkID pchid = { client->renderer->pos.x / 16, client->renderer->pos.x / 16 };
+
+        Chunk* pch = client->server->loadChunk(client->server->worlds["world"], pchid);
+
+        glm::vec<3, int> localPos(client->renderer->pos);
+
+        localPos.x -= 16 * pchid.X;
+        localPos.z -= 16 * pchid.Z;
+
+        if (pch->get(localPos.x, localPos.y - 1, localPos.z).id != ID_NONE) {
+            printf("GROUNDED\n");
+        } else {
+            client->renderer->pos.y -= 0.1;
+        }
+        */
+
+        //client->renderer->pos += vec3(0.1, 0.0, 0.0);
         client->yaw += dt * 0.4f * client->mouseDelta.x;
         client->pitch += dt * 0.4f * client->mouseDelta.y;
 

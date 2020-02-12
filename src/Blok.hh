@@ -56,16 +56,15 @@ namespace Blok {
     #define CHUNK_NBLOCK (CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT)
 
     /* Block IDs */
-    enum {
+    enum ID : uint8_t {
 
-        // none/air block
-        ID_NONE       = 0,
-        // the stone block
-        ID_STONE      = 1,
+        // 0: NONE/AIR block
+        NONE     = 0,
 
+        // 1: DIRT block
+        DIRT     = 1,
 
-        // the last item
-        ID__END
+        STONE    = 2,
 
     };
 
@@ -107,6 +106,27 @@ namespace Blok {
     class Entity;
 
 
+    // BlockConstProperties - global information about a given block type,
+    // not an instance
+    struct BlockConstProp {
+        // the ID of the block
+        ID id;
+
+        // the enum value name
+        String id_name;
+
+        // the human readable name
+        String hr_name;
+
+    };
+
+    // return the name of a given block ID
+    const char* id_to_name(ID id);
+
+    // return the ID from a given name, AIR if not found
+    ID id_from_name(const char* name);
+
+
     // information of a single block in the world
     struct BlockInfo {
 
@@ -116,11 +136,10 @@ namespace Blok {
         // the meta-data of the block (each block can interperet this differently)
         uint8_t meta;
 
-        BlockInfo(uint8_t id=ID_NONE, uint8_t meta=0) {
+        BlockInfo(ID id=ID::NONE, uint8_t meta=0) {
             this->id = id;
             this->meta = meta;
         }
-
     };
 
     // a single chunk of data, representing a cross section of the world
@@ -163,7 +182,7 @@ namespace Blok {
             this->blocks = (BlockInfo*)malloc(sizeof(*this->blocks) * CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT);
             this->meta.biome = biome;
             for (int i = 0; i < CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT; ++i) {
-                this->blocks[i].id = ID_NONE;
+                this->blocks[i].id = ID::NONE;
                 this->blocks[i].meta = 0;
             }
             // 0 to uninitializedd
@@ -177,9 +196,12 @@ namespace Blok {
             free(this->blocks);
         }
 
-
         // calculates the current hash
         uint64_t getHash() {
+            // djb-like hash function to quickly scatter values.
+            // most hash changes will occur when a single block has been broken,
+            // so as long as a single value is guaranteed to change it, the hash function is fine
+
             uint64_t res = 5381;
             for (int i = 0; i < CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT; ++i) {
                 uint64_t ctmp = (blocks[i].id ^ this->blocks[i].meta);
@@ -189,16 +211,20 @@ namespace Blok {
             return res;
         }
 
+        int getIndex(int x, int y, int z) const {
+            return y + CHUNK_HEIGHT * (CHUNK_SIZE * x + z);
+        }
+
         // get the block info at given LOCAL coordinates
-        BlockInfo get(int x, int y, int z) {
-            int idx = y + CHUNK_HEIGHT * (CHUNK_SIZE * x + z);
+        BlockInfo get(int x, int y, int z) const {
+            int idx = getIndex(x, y, z);
             return blocks[idx];
         }
 
 
-        // set the block info at given LOCAL coordinates
-        void set(int x, int y, int z, BlockInfo info = {0, 0}) {
-            int idx = y + CHUNK_HEIGHT * (CHUNK_SIZE * x + z);
+        // set the block info at given LOCAL coordinates (if nothing is given, it default to air)
+        void set(int x, int y, int z, BlockInfo info = {ID::NONE, 0}) {
+            int idx = getIndex(x, y, z);
             blocks[idx] = info;
             cache.isRenderDirty = true;
         }
@@ -212,7 +238,7 @@ namespace Blok {
     // get the current time (in seconds) since initialization
     double getTime();
 
-    /* logging*/
+    /* logging */
 
     // enumeration for levels of logging, from least important to most important
     enum {
@@ -248,6 +274,7 @@ namespace Blok {
     // prints a error message, assuming the current log level allows for it
     #define b_error(...) b_log(LOG_ERROR, __FILE__, __LINE__, __VA_ARGS__)
 
+    // internal method to check for any OpenGL errors that have occured
     void opengl_error_check();
 
 }

@@ -10,74 +10,12 @@
 
 namespace Blok::Render {
 
-/*
-void Renderer::renderEntity(Entity* entity) {
-    // construct the model matrix
-    mat4 gM = glm::translate(entity->loc);
-
-    // combine all 3 to get PVM
-    mat4 gPVM = gP * gV * gM;
-
-    // now, set the diffuse texture
-    shaders["geometry"]->setInt("texDiffuse", 7);
-    glActiveTexture(GL_TEXTURE7);
-    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/grass.jpg")->glTex);
-
-    // and set matrices
-    shaders["geometry"]->setMat4("gM", gM);
-    shaders["geometry"]->setMat4("gPVM", gPVM);
-
-
-    // draw the actual mesh
-    glBindVertexArray(mymesh->glVAO); 
-    glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
-
-}*/
-
-
 // render a chunk of data
 void Renderer::renderChunk(ChunkID id, Chunk* chunk) {
-
-    // add this to the chunks
+    // add this to the render queue
     queue.chunks[id] = chunk;
-
-
-    // start of the chunk
-    /*vec3 chunk_pos(id.X * CHUNK_SIZE, 0, id.Z * CHUNK_SIZE);
-
-    mat4 gPV = gP * gV;
-
-    // now, set the diffuse texture
-    shaders["geometry"]->setInt("texDiffuse", 7);
-    glActiveTexture(GL_TEXTURE7);
-    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/GrassBlock.jpg")->glTex);
-    glBindVertexArray(mymesh->glVAO); 
-
-    for (int x = 0; x < CHUNK_SIZE; ++x) {
-        for (int z = 0; z < CHUNK_SIZE; ++z) {
-            for (int y = CHUNK_HEIGHT - 1; y >= 0; --y) {
-                if (chunk->get(x, y, z).id != ID_NONE) {
-                    // do a cube
-                    // construct the model matrix
-                    mat4 gM = glm::translate(chunk_pos + vec3(x, y, z)) * glm::scale(vec3(.999, .999, .999));
-
-                    // combine all 3 to get PVM
-                    mat4 gPVM = gPV * gM;
-
-                    // and set matrices
-                    shaders["geometry"]->setMat4("gM", gM);
-                    shaders["geometry"]->setMat4("gPVM", gPVM);
-
-                    // draw the actual mesh
-                    glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
-                    break;
-
-                }
-            }
-        }
-    }
-*/
 }
+
 /*
 void Renderer::renderObj(mat4 gT) {
     // draw mesh
@@ -112,6 +50,8 @@ void Renderer::render_start() {
     // enable depth testing
     glEnable(GL_DEPTH_TEST); 
     glDepthFunc(GL_LESS);
+    glEnable(GL_CULL_FACE);
+    glCullFace(GL_FRONT);
     
     // FBO of our rendertarget
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targets["geometry"]->glFBO);
@@ -271,12 +211,12 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
 
                     // skip empty blocks
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
                     // compute whether there are any blocks blocking us in any direction
-                    bool hasX = chunk->get(x-1, y, z).id != ID_NONE && cR->get(0, y, z).id != ID_NONE;
-                    bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                    bool hasZ = chunk->get(x, y, z-1).id != ID_NONE && chunk->get(x, y, z+1).id != ID_NONE;
+                    bool hasX = chunk->get(x-1, y, z).id != ID::NONE && cR->get(0, y, z).id != ID::NONE;
+                    bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                    bool hasZ = chunk->get(x, y, z-1).id != ID::NONE && chunk->get(x, y, z+1).id != ID::NONE;
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
@@ -292,7 +232,7 @@ void Renderer::render_end() {
                     
                     // check and make sure the current block is renderable and visible
                     cur = chunk->get(x, y, z);
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
                     chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
@@ -312,12 +252,12 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
 
                     // skip empty blocks
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
                     // compute whether there are any blocks blocking us in any direction
-                    bool hasX = chunk->get(x-1, y, z).id != ID_NONE && chunk->get(x+1, y, z).id != ID_NONE;
-                    bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                    bool hasZ = chunk->get(x, y, z-1).id != ID_NONE && cT->get(x, y, 0).id != ID_NONE;
+                    bool hasX = chunk->get(x-1, y, z).id != ID::NONE && chunk->get(x+1, y, z).id != ID::NONE;
+                    bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                    bool hasZ = chunk->get(x, y, z-1).id != ID::NONE && cT->get(x, y, 0).id != ID::NONE;
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
@@ -333,7 +273,7 @@ void Renderer::render_end() {
                     
                     // check and make sure the current block is renderable and visible
                     cur = chunk->get(x, y, z);
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
                     chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
@@ -354,12 +294,12 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
 
                     // skip empty blocks
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
                     // compute whether there are any blocks blocking us in any direction
-                    bool hasX = cL->get(CHUNK_SIZE-1, y, z).id != ID_NONE && chunk->get(x+1, y, z).id != ID_NONE;
-                    bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                    bool hasZ = chunk->get(x, y, z-1).id != ID_NONE && chunk->get(x, y, z+1).id != ID_NONE;
+                    bool hasX = cL->get(CHUNK_SIZE-1, y, z).id != ID::NONE && chunk->get(x+1, y, z).id != ID::NONE;
+                    bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                    bool hasZ = chunk->get(x, y, z-1).id != ID::NONE && chunk->get(x, y, z+1).id != ID::NONE;
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
@@ -375,7 +315,7 @@ void Renderer::render_end() {
                     
                     // check and make sure the current block is renderable and visible
                     cur = chunk->get(x, y, z);
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
                     chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
@@ -395,12 +335,12 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
 
                     // skip empty blocks
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
                     // compute whether there are any blocks blocking us in any direction
-                    bool hasX = chunk->get(x-1, y, z).id != ID_NONE && chunk->get(x+1, y, z).id != ID_NONE;
-                    bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                    bool hasZ = cB->get(x, y, CHUNK_SIZE-1).id != ID_NONE && chunk->get(x, y, z+1).id != ID_NONE;
+                    bool hasX = chunk->get(x-1, y, z).id != ID::NONE && chunk->get(x+1, y, z).id != ID::NONE;
+                    bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                    bool hasZ = cB->get(x, y, CHUNK_SIZE-1).id != ID::NONE && chunk->get(x, y, z+1).id != ID::NONE;
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
@@ -416,7 +356,7 @@ void Renderer::render_end() {
                     
                     // check and make sure the current block is renderable and visible
                     cur = chunk->get(x, y, z);
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
                     chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
@@ -435,12 +375,12 @@ void Renderer::render_end() {
                 cur = chunk->get(x, y, z);
 
                 // skip empty blocks
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 // compute whether there are any blocks blocking us in any direction
-                bool hasX = chunk->get(x-1, y, z).id != ID_NONE && cR->get(0, y, z).id != ID_NONE;
-                bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                bool hasZ = chunk->get(x, y, z-1).id != ID_NONE && cT->get(x, y, 0).id != ID_NONE;
+                bool hasX = chunk->get(x-1, y, z).id != ID::NONE && cR->get(0, y, z).id != ID::NONE;
+                bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                bool hasZ = chunk->get(x, y, z-1).id != ID::NONE && cT->get(x, y, 0).id != ID::NONE;
 
                 // if there is any chance of visibility
                 if (!(hasX && hasY && hasZ)) {
@@ -449,7 +389,7 @@ void Renderer::render_end() {
                 /*
                 // check and make sure the current block is renderable and visible
                 cur = chunk->get(x, y, z);
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 blocks.push_back({ chunk_pos + vec3(x, y, z), cur });*/
             }
@@ -462,7 +402,7 @@ void Renderer::render_end() {
                 
                 // check and make sure the current block is renderable and visible
                 cur = chunk->get(x, y, z);
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
             }
@@ -478,12 +418,12 @@ void Renderer::render_end() {
                 cur = chunk->get(x, y, z);
 
                 // skip empty blocks
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 // compute whether there are any blocks blocking us in any direction
-                bool hasX = cL->get(CHUNK_SIZE-1, y, z).id != ID_NONE && chunk->get(x, y, z).id != ID_NONE;
-                bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                bool hasZ = chunk->get(x, y, z-1).id != ID_NONE && cT->get(x, y, 0).id != ID_NONE;
+                bool hasX = cL->get(CHUNK_SIZE-1, y, z).id != ID::NONE && chunk->get(x, y, z).id != ID::NONE;
+                bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                bool hasZ = chunk->get(x, y, z-1).id != ID::NONE && cT->get(x, y, 0).id != ID::NONE;
 
                 // if there is any chance of visibility
                 if (!(hasX && hasY && hasZ)) {
@@ -499,7 +439,7 @@ void Renderer::render_end() {
                 
                 // check and make sure the current block is renderable and visible
                 cur = chunk->get(x, y, z);
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
             }
@@ -515,12 +455,12 @@ void Renderer::render_end() {
                 cur = chunk->get(x, y, z);
 
                 // skip empty blocks
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 // compute whether there are any blocks blocking us in any direction
-                bool hasX = cL->get(CHUNK_SIZE-1, y, z).id != ID_NONE && chunk->get(x, y, z).id != ID_NONE;
-                bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                bool hasZ = cB->get(x, y, CHUNK_SIZE-1).id != ID_NONE && chunk->get(x, y, z+1).id != ID_NONE;
+                bool hasX = cL->get(CHUNK_SIZE-1, y, z).id != ID::NONE && chunk->get(x, y, z).id != ID::NONE;
+                bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                bool hasZ = cB->get(x, y, CHUNK_SIZE-1).id != ID::NONE && chunk->get(x, y, z+1).id != ID::NONE;
 
                 // if there is any chance of visibility
                 if (!(hasX && hasY && hasZ)) {
@@ -536,7 +476,7 @@ void Renderer::render_end() {
                 
                 // check and make sure the current block is renderable and visible
                 cur = chunk->get(x, y, z);
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
             }
@@ -553,12 +493,12 @@ void Renderer::render_end() {
                 cur = chunk->get(x, y, z);
 
                 // skip empty blocks
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 // compute whether there are any blocks blocking us in any direction
-                bool hasX = chunk->get(x-1, y, z).id != ID_NONE && cR->get(0, y, z).id != ID_NONE;
-                bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                bool hasZ = cB->get(x, y, CHUNK_SIZE-1).id != ID_NONE && chunk->get(x, y, z+1).id != ID_NONE;
+                bool hasX = chunk->get(x-1, y, z).id != ID::NONE && cR->get(0, y, z).id != ID::NONE;
+                bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                bool hasZ = cB->get(x, y, CHUNK_SIZE-1).id != ID::NONE && chunk->get(x, y, z+1).id != ID::NONE;
 
                 // if there is any chance of visibility
                 if (!(hasX && hasY && hasZ)) {
@@ -574,7 +514,7 @@ void Renderer::render_end() {
                 
                 // check and make sure the current block is renderable and visible
                 cur = chunk->get(x, y, z);
-                if (cur.id == ID_NONE) continue;
+                if (cur.id == ID::NONE) continue;
 
                 chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
             }
@@ -592,13 +532,13 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
 
                     // skip block
-                    if (cur.id == ID_NONE) continue;
+                    if (cur.id == ID::NONE) continue;
 
 
                     // compute whether there are any blocks blocking us
-                    bool hasX = chunk->get(x-1, y, z).id != ID_NONE && chunk->get(x+1, y, z).id != ID_NONE;
-                    bool hasY = chunk->get(x, y-1, z).id != ID_NONE && chunk->get(x, y+1, z).id != ID_NONE;
-                    bool hasZ = chunk->get(x, y, z-1).id != ID_NONE && chunk->get(x, y, z+1).id != ID_NONE;
+                    bool hasX = chunk->get(x-1, y, z).id != ID::NONE && chunk->get(x+1, y, z).id != ID::NONE;
+                    bool hasY = chunk->get(x, y-1, z).id != ID::NONE && chunk->get(x, y+1, z).id != ID::NONE;
+                    bool hasZ = chunk->get(x, y, z-1).id != ID::NONE && chunk->get(x, y, z+1).id != ID::NONE;
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
@@ -627,9 +567,8 @@ void Renderer::render_end() {
     // now, set the diffuse texture for all blocks
     shaders["geometry"]->setInt("texDiffuse", 7);
     glActiveTexture(GL_TEXTURE7);
-    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/GrassBlock.jpg")->glTex);
+    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/GENERIC.png")->glTex);
     glBindVertexArray(mymesh->glVAO); 
-
 
     // keep a list of all visible blocks
     List< Pair<vec3, BlockInfo> > blocks;
@@ -648,21 +587,53 @@ void Renderer::render_end() {
 
     }
 
-    // actually render the blocks
+    //List<mat4> mats_gM, mats_gPVM;
+
+    List<vec3> positions;
+    // collect all instances of blocks
     for (auto ritem : blocks) {
-        mat4 gM = glm::translate(ritem.first);
+        positions.push_back(ritem.first);
+        //mat4 gM = glm::translate(ritem.first);
 
         // combine all 3 to get PVM
-        mat4 gPVM = gPV * gM;
+        //mat4 gPVM = gPV * gM;
+
+        //mats_gM.push_back(gM);
+        //mats_gPVM.push_back(gPVM);
 
         // and set matrices
-        shaders["geometry"]->setMat4("gM", gM);
-        shaders["geometry"]->setMat4("gPVM", gPVM);
+        //shaders["geometry"]->setMat4("gM", gM);
+        //shaders["geometry"]->setMat4("gPVM", gPVM);
 
         // draw the actual mesh
-        glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
+       //glDrawElements(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
     }
 
+    shaders["geometry"]->setMat4("gPV", gPV);
+
+    glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * positions.size(), &positions[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+
+    glEnableVertexAttribArray(3);
+    glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
+
+    glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+    opengl_error_check();
+    glVertexAttribDivisor(3, 1);  
+    printf("numblocks: %i\n", (int)positions.size());
+
+
+/*
+
+
+    //glBindBuffer(GL_ARRAY_BUFFER, 0);	
+
+*/
+
+
+    // draw them
+    glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, positions.size());
 
     // draw to actual screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -672,7 +643,6 @@ void Renderer::render_end() {
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
     opengl_error_check();
+
 }
-
-
 };

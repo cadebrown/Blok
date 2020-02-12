@@ -28,7 +28,7 @@ static Mesh* processMesh(aiMesh *mesh, const aiScene *scene) {
 
         vertex.N = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
 
-        std::cout << glm::to_string(vertex.N) << std::endl;
+        //std::cout << glm::to_string(vertex.N) << std::endl;
         
         // UVs
         if (mesh->mTextureCoords[0]) {

@@ -52,6 +52,8 @@ namespace Blok::Render {
         // (pos >> 12) & 0x7 gives three bits that tell whether it is facing forwards
         //   in the x, y, and z directions respectively
         //uint16_t pos;
+
+        // for now, store as vec3's
         vec3 pos, normal;
 
         // the texture coordinates, packed:
@@ -64,7 +66,7 @@ namespace Blok::Render {
             this->normal = normal;
             this->uv = uv;
 
-/*
+            /*
             pos = glm::clamp(pos, vec3(0), vec3(1));
 
             this->pos |= 0xFF & ((uint)pos.x * 256);
@@ -76,20 +78,20 @@ namespace Blok::Render {
             if (normal.y > 0) normalp |= 2;
             if (normal.z > 0) normalp |= 4;
             this->pos |= normalp << 12;
-*/
+            */
         }
 
     };
 
 
-    // Mesh: a 3D polygon. Implementation found in `render/Mesh.cc`
+    // Mesh: a 3D polygon, of the most generic variety. Implementation found in `render/Mesh.cc`
     class Mesh {
         public:
 
         // load from a file
         static Mesh* load(const String& fname);
 
-        // init the mesh
+        // internal method to initialize OpenGL buffers
         void setup();
         
         // OpenGL handles to the Vertex Array Object, Vertex Buffer Object, and EBO
@@ -111,28 +113,31 @@ namespace Blok::Render {
     };
 
 
-
+    // PackedBlockMesh : a 3D polygon specifically meant for the PackedBlockVertex format
     class PackedBlockMesh {
         public:
 
-
-        // construct these
+        // OpenGL handles to the various buffers
         uint glVAO, glVBO, glEBO;
 
+        // list of vertices, which are indexed by faces
         List<PackedBlockVertex> vertices;
 
+        // list of triangles in the vertices array
         List<Face> faces;
 
+        // internal method to initialize OpenGL buffers
         void setup();
 
+        // construct a packed block mesh from a list of vertices & faces
         PackedBlockMesh(const List<PackedBlockVertex>& vertices, const List<Face>& faces);
 
-        // from a normal mesh
+        // construct a PackedBlockMesh from a normal mesh
         PackedBlockMesh(Mesh* m);
 
     };
 
-    // Texture: a 2D image, bit map style. Implementation found in `render/Texture.cc`
+    // Texture : a 2D image, bit map format. Implementation found in `render/Texture.cc`
     class Texture {
         private:
 
@@ -147,8 +152,9 @@ namespace Blok::Render {
         static Texture* loadCopy(const String& path);
 
         // load a constant, shared reference of the texture
+        // NOTE: the caller should NOT free this texture, and it should also not
+        //   modify any pixels
         static Texture* loadConst(const String& path);
-
 
         // member variables
 
@@ -161,26 +167,35 @@ namespace Blok::Render {
         // whether not something has been updated
         bool _flag;
 
-        // the array of _pixel
+        // the array of pixel data, in packed row major order
         pixel* pixels;
-
 
 
         // don't use this constructor, please use Texture::loadCopy if you need your own copy
         //   of the texture, or Texture::loadConst if you will not be modifying the texture
         Texture(String path);
 
+        int getIndex(int row, int col) const {
+            return width * row + col;
+        }
 
+        // get the pixel at the indicated coordinates
+        pixel get(int row, int col) const {
+            int idx = getIndex(row, col);
+            return pixels[idx];
+        }
 
-        // get a reference to a given pixel from the array
-        pixel& get(int row, int col) {
-            return pixels[width * row + col];
+        // set the pixel at the given location to a value, defaulting to black
+        void set(int row, int col, pixel pix=pixel(0, 0, 0, 0)) {
+            int idx = getIndex(row, col);
+            pixels[idx] = pix;
         }
 
     };
 
 
-    // Shader: a shader program, for drawing input points, see render/Shader.cc for more
+    // Shader : a shader program, for drawing input points, see render/Shader.cc for more
+    //   basically just a wrapper over the OpenGL construct
     class Shader {
         
         // the cache of shaders that already exist, keyed on <vs_file, fs_file>
@@ -188,7 +203,9 @@ namespace Blok::Render {
 
         public:
 
-        // get a shader
+        // get a shader from the source files
+        // NOTE: The caller should not free or modify this shader, except for the
+        //   set* methods, and using the program normally
         static Shader* get(const String& vsFile, const String& fsFile);
 
         // opengl program ID
@@ -203,7 +220,6 @@ namespace Blok::Render {
 
         // returns the uniform location of a given name
         int getUL(const String& name);
-
 
         /* setting uniform values in the shader */
 
@@ -223,20 +239,24 @@ namespace Blok::Render {
         void setMat4  (const String& name, const mat4& mat);
     };
 
-    // a render target, i.e. a texture that can be rendered to. See render/Target.cc for more
+    // Target : a target framebuffer that can be rendered to as an intermediate result, then
+    //   output to the screen or some other texture
+    // This render Target can have multiple color attachments, so for example, for a deferred renderer,
+    //   you can have 4 (position, color, normal, UV)
     class Target {
         public:
 
-        // opengl handles
+        // OpenGL handles to the frame buffer object (FBO), and the depth buffer
         uint glFBO, glDepth;
 
-        // openGL textures
+        // List of OpenGL handle textures that are a part of the render target
         List<uint> glTex;
 
-        // attachments to render to
+        // This is the list of the GL_COLOR_ATTACHMENT* enumerations, describing the respective
+        //   glTex entries
         List<GLenum> glColorAttachments;
 
-        // width/height of the render target
+        // width/height of the render target, in pixels
         int width, height;
 
         // create a render target with a given width/height and optional number of textures
@@ -245,13 +265,17 @@ namespace Blok::Render {
     };
 
 
-    // Renderer : the main class that does the rendering
+    // Renderer : a construct for rendering the entire game state, including chunks, entities, 
+    //   GUIs, markup, etc
+    // This should be the primary object calling OpenGL rendering commands
+    // Internally, 
     class Renderer {
         public:
 
-
-        // the output width & height
+        // the width/height (in pixels) of the output Target
         int width, height;
+
+
         PackedBlockMesh* mymesh;
 
         // various render targets, for different stages in processing
@@ -262,6 +286,10 @@ namespace Blok::Render {
 
         // the default background color
         vec3 clearColor;
+
+        // the vertex buffer object for the block
+        uint glBlockVBO;
+
 
 
         // the field of view, in degrees
@@ -325,6 +353,11 @@ namespace Blok::Render {
             });*/
             mymesh = new PackedBlockMesh(Mesh::load("../resources/DefaultCube.obj"));
 
+            glGenBuffers(1, &glBlockVBO);
+            //glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
+            //glBufferData(GL_ARRAY_BUFFER, sizeof(mat4), &translations[0], GL_STATIC_DRAW);
+            //glBindBuffer(GL_ARRAY_BUFFER, 0); 
+
         }
 
         // deconstruct the renderer
@@ -335,12 +368,17 @@ namespace Blok::Render {
             }
         }
 
+        // get the final output target of the renderer
+        Target* getOutputTarget() {
+            // for now, just output the geometry
+            return targets["geometry"];
+        }
 
 
         // begin the rendering sequence
         void render_start();
 
-        // add a chunk to be rendered
+        // request for the renderer to render a chunk of the world
         // NOTE: must be between `render_start()` and `render_end()`!
         void renderChunk(ChunkID id, Chunk* chunk);
 
