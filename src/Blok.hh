@@ -141,6 +141,23 @@ namespace Blok {
         // x, y, z -> y + CHUNK_HEIGHT * (CHUNK_SIZE * x + z)
         BlockInfo* blocks;
 
+        // internal dirty cache
+        struct Cache {
+            
+            // the up-to-date rendering hash
+            uint64_t curRenderHash;
+            
+            // the hash of the chunk last time it was rendered
+            uint64_t lastRenderHash;
+
+            // whether the chunk has changed since it was rendered
+            bool isRenderDirty;
+
+            // the result of that the renderer should render
+            List< Pair<vec3, BlockInfo> > renderBlocks;
+
+        } cache;
+
         // construct a new data
         Chunk(uint8_t biome=BIOME_NONE) {
             this->blocks = (BlockInfo*)malloc(sizeof(*this->blocks) * CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT);
@@ -149,6 +166,10 @@ namespace Blok {
                 this->blocks[i].id = ID_NONE;
                 this->blocks[i].meta = 0;
             }
+            // 0 to uninitializedd
+            this->cache.curRenderHash = 0;
+            this->cache.lastRenderHash = 0;
+            this->cache.isRenderDirty = true;
         }
 
         // deallocation of a chunk
@@ -156,11 +177,32 @@ namespace Blok {
             free(this->blocks);
         }
 
-        // get a reference to one
-        BlockInfo& get(int x, int y, int z) {
+
+        // calculates the current hash
+        uint64_t getHash() {
+            uint64_t res = 5381;
+            for (int i = 0; i < CHUNK_SIZE * CHUNK_SIZE * CHUNK_HEIGHT; ++i) {
+                uint64_t ctmp = (blocks[i].id ^ this->blocks[i].meta);
+                res += (ctmp << 5) + ctmp + 91;
+            }
+
+            return res;
+        }
+
+        // get the block info at given LOCAL coordinates
+        BlockInfo get(int x, int y, int z) {
             int idx = y + CHUNK_HEIGHT * (CHUNK_SIZE * x + z);
             return blocks[idx];
         }
+
+
+        // set the block info at given LOCAL coordinates
+        void set(int x, int y, int z, BlockInfo info = {0, 0}) {
+            int idx = y + CHUNK_HEIGHT * (CHUNK_SIZE * x + z);
+            blocks[idx] = info;
+            cache.isRenderDirty = true;
+        }
+
 
     };
 

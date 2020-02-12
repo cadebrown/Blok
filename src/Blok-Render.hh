@@ -18,6 +18,8 @@ namespace Blok::Render {
     using pixel = vec<4, uint8_t>;
 
     // a single vertex, including all neccessary data
+    // NOTE: this is the most expansive definition of a vertex,
+    //   most of the internal rendering uses more efficient storage
     struct Vertex {
         // position of the vertex (x, y, z)
         vec3 pos;
@@ -34,9 +36,51 @@ namespace Blok::Render {
 
     };
 
+
     // a face is a set of 3 indices into an array of verteices. The 3 indicated
     //   by the indices form a triangle
     using Face = vec<3, uint>;
+
+
+    // PackedBlockVertex : more efficient storage for specifically the main Packed Block format,
+    // where everything is very efficient
+    struct PackedBlockVertex {
+
+        // position of this vertex (locally), packed:
+        // [4: x] [4: y] [4: z] [3: xyz normal dir]
+        // so pos & 0xF / 0xF gives the x position from 0-1, etc
+        // (pos >> 12) & 0x7 gives three bits that tell whether it is facing forwards
+        //   in the x, y, and z directions respectively
+        //uint16_t pos;
+        vec3 pos, normal;
+
+        // the texture coordinates, packed:
+        // [4: U] [4: V]
+        // so uvp & 0xF / 0xF gives the U coordinate, etc
+        vec2 uv;
+
+        PackedBlockVertex(vec3 pos, vec3 normal, vec2 uv) {
+            this->pos = pos;
+            this->normal = normal;
+            this->uv = uv;
+
+/*
+            pos = glm::clamp(pos, vec3(0), vec3(1));
+
+            this->pos |= 0xFF & ((uint)pos.x * 256);
+            this->pos |= (0xFF & ((uint)pos.y * 256)) << 4;
+            this->pos |= (0xFF & ((uint)pos.z * 256)) << 8;
+
+            uint8_t normalp = 0;
+            if (normal.x > 0) normalp |= 1;
+            if (normal.y > 0) normalp |= 2;
+            if (normal.z > 0) normalp |= 4;
+            this->pos |= normalp << 12;
+*/
+        }
+
+    };
+
 
     // Mesh: a 3D polygon. Implementation found in `render/Mesh.cc`
     class Mesh {
@@ -63,6 +107,28 @@ namespace Blok::Render {
         //   each face is a list of indexes into the vertices array, making up
         //   triangles
         Mesh(const List<Vertex>& vertices, const List<Face>& faces);
+
+    };
+
+
+
+    class PackedBlockMesh {
+        public:
+
+
+        // construct these
+        uint glVAO, glVBO, glEBO;
+
+        List<PackedBlockVertex> vertices;
+
+        List<Face> faces;
+
+        void setup();
+
+        PackedBlockMesh(const List<PackedBlockVertex>& vertices, const List<Face>& faces);
+
+        // from a normal mesh
+        PackedBlockMesh(Mesh* m);
 
     };
 
@@ -186,7 +252,7 @@ namespace Blok::Render {
 
         // the output width & height
         int width, height;
-        Mesh* mymesh;
+        PackedBlockMesh* mymesh;
 
         // various render targets, for different stages in processing
         Map<String, Target*> targets;
@@ -246,7 +312,8 @@ namespace Blok::Render {
             targets["geometry"] = new Target(width, height, 1);
 
             // construct the main geometry pass
-            shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
+            //shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
+            shaders["geometry"] = Shader::get("resources/pmgeom.vs", "resources/pmgeom.fs");
 
             // construct basic mesh
             /*mymesh = new Mesh({
@@ -256,7 +323,7 @@ namespace Blok::Render {
             }, {
                 {0, 1, 2}
             });*/
-            mymesh = Mesh::load("../resources/DefaultCube.obj");
+            mymesh = new PackedBlockMesh(Mesh::load("../resources/DefaultCube.obj"));
 
         }
 

@@ -92,7 +92,7 @@ bool Client::frame() {
     renderer->render_start();
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    int N = 4;
+    int N = 5;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
@@ -119,7 +119,6 @@ bool Client::frame() {
         lastKeysPressed[i] = keysPressed[i];
         keysPressed[i] = false;
     }
-    
 
     // update the frame
     glfwSwapBuffers(window);

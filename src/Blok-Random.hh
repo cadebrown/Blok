@@ -42,7 +42,7 @@ class PerlinGen {
     // get a single sample of noise (omit the Z parameter to generate just 2D noise)
     double noise(double x, double y, double z=0.5);
 
-    PerlinGen(uint seed=42);
+    PerlinGen(uint seed=0);
 
     private:
 

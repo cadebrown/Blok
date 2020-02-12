@@ -168,7 +168,7 @@ int main(int argc, char** argv) {
 
         if (client->N_frames % 20 == 0) {
 
-            printf("fps: %lf\n", 1 / dt);
+            //printf("fps: %lf\n", 1 / dt);
         }
 
     } while (client->frame());

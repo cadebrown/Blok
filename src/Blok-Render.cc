@@ -123,7 +123,7 @@ void Renderer::render_start() {
     glDrawBuffers(targets["geometry"]->glColorAttachments.size(), &targets["geometry"]->glColorAttachments[0]);
 
     // calculate the perspective matrix
-    gP = glm::perspective(glm::radians(FOV / 2.0f), (float)width / height, 0.25f, 250.0f);
+    gP = glm::perspective(glm::radians(FOV / 2.0f), (float)width / height, 0.25f, 400.0f);
 
     gP[0] *= -1;
 
@@ -137,12 +137,7 @@ void Renderer::render_start() {
 // finalize the rendering sequence
 void Renderer::render_end() {
 
-    double stime = getTime();
-
     /* first: loop through all the chunks that were requested to render */
-
-    // keep a list of all visible blocks
-    List< Pair<vec3, BlockInfo> > blocks;
 
     // temporary variable for the current block
     BlockInfo cur;
@@ -152,13 +147,33 @@ void Renderer::render_end() {
     // blocks to the left for occlusion (roughly)
     bool lookingX = forward.x > 0, lookingY = forward.y > 0, lookingZ = forward.z > 0;
 
-
-    // loop through all the chunks that have been requested in this frame
+    List< Pair<ChunkID, Chunk*> > torender = {};
     for (auto item : queue.chunks) {
+        torender.push_back(item);
+    }
 
+    int torender_size = torender.size();
+    // loop through all the chunks that have been requested in this frame
+
+
+    for (int idx = 0; idx < queue.chunks.size(); ++idx) {
+        auto item = torender[idx];
         // just expand out the queue entry
         ChunkID cid = item.first;
         Chunk* chunk = item.second;
+
+        // clear any previous current render hashes
+        if (chunk->cache.curRenderHash == 0 || chunk->cache.isRenderDirty) chunk->cache.curRenderHash = chunk->getHash();
+    }
+
+
+    for (int idx = 0; idx < torender_size; ++idx) {
+        auto item = torender[idx];
+        // just expand out the queue entry
+        ChunkID cid = item.first;
+        Chunk* chunk = item.second;
+
+        // the hash should already be computed
 
         // view the chunk as top down, with +X being right, +Z being up, etc
         // like so:
@@ -179,6 +194,7 @@ void Renderer::render_end() {
         //  + > (X)
         //
 
+        // get the neighbors for the following directions:
         // left, top, right, bottom chunks (see above diagram)
         // if NULL then the chunk is not currently being rendered
         Chunk *cL, *cT, *cR, *cB;
@@ -198,6 +214,23 @@ void Renderer::render_end() {
         oid = {cid.X, cid.Z - 1};
         cB = queue.chunks.find(oid) == queue.chunks.end() ? NULL : queue.chunks[oid];
 
+        /*
+        if (cR && cR->cache.curRenderHash == 0) cR->cache.curRenderHash = cR->getHash();
+        if (cT && cT->cache.curRenderHash == 0) cT->cache.curRenderHash = cT->getHash();
+        if (cL && cL->cache.curRenderHash == 0) cL->cache.curRenderHash = cL->getHash();
+        if (cB && cB->cache.curRenderHash == 0) cB->cache.curRenderHash = cB->getHash();*/
+
+        // skip if everything has stayed the same
+        if (chunk->cache.curRenderHash == chunk->cache.lastRenderHash && 
+                (!cR || cR->cache.curRenderHash == cR->cache.lastRenderHash) &&
+                (!cT || cT->cache.curRenderHash == cT->cache.lastRenderHash) &&
+                (!cL || cL->cache.curRenderHash == cL->cache.lastRenderHash) &&
+                (!cB || cB->cache.curRenderHash == cB->cache.lastRenderHash)
+        ) continue;
+
+        // else, set the hash and continue on
+        chunk->cache.lastRenderHash = chunk->cache.curRenderHash;
+        chunk->cache.renderBlocks.clear();
 
         // get the base position of the bottom left back corner
         vec3 chunk_pos(cid.X * CHUNK_SIZE, 0, cid.Z * CHUNK_SIZE);
@@ -214,10 +247,10 @@ void Renderer::render_end() {
             for (int z = 0; z < CHUNK_SIZE; ++z) {
                 // add [x, 0, z] and [x, HEIGHT-1, z] to the render stack
                 cur = chunk->get(x, 0, z);
-                if (cur.id) blocks.push_back({ chunk_pos + vec3(x, 0, z), cur });
+                if (cur.id) chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, 0, z), cur });
 
                 cur = chunk->get(x, CHUNK_HEIGHT - 1, z);
-                if (cur.id) blocks.push_back({ chunk_pos + vec3(x, CHUNK_HEIGHT - 1, z), cur });
+                if (cur.id) chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, CHUNK_HEIGHT - 1, z), cur });
             }
         }
 
@@ -247,7 +280,7 @@ void Renderer::render_end() {
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
-                        blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                        chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                     }
                 }
             }
@@ -261,7 +294,7 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
                     if (cur.id == ID_NONE) continue;
 
-                    blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                    chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
             }
         }
@@ -288,7 +321,7 @@ void Renderer::render_end() {
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
-                        blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                        chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                     }
                 }
             }
@@ -302,7 +335,7 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
                     if (cur.id == ID_NONE) continue;
 
-                    blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                    chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
             }
         }
@@ -330,7 +363,7 @@ void Renderer::render_end() {
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
-                        blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                       chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                     }
                 }
             }
@@ -344,7 +377,7 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
                     if (cur.id == ID_NONE) continue;
 
-                    blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                    chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
             }
         }
@@ -371,7 +404,7 @@ void Renderer::render_end() {
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
-                        blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                        chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                     }
                 }
             }
@@ -385,7 +418,7 @@ void Renderer::render_end() {
                     cur = chunk->get(x, y, z);
                     if (cur.id == ID_NONE) continue;
 
-                    blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                    chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
             }
         }
@@ -411,7 +444,7 @@ void Renderer::render_end() {
 
                 // if there is any chance of visibility
                 if (!(hasX && hasY && hasZ)) {
-                    blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                    chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
                 /*
                 // check and make sure the current block is renderable and visible
@@ -431,7 +464,7 @@ void Renderer::render_end() {
                 cur = chunk->get(x, y, z);
                 if (cur.id == ID_NONE) continue;
 
-                blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
             }
         }
 
@@ -454,7 +487,7 @@ void Renderer::render_end() {
 
                 // if there is any chance of visibility
                 if (!(hasX && hasY && hasZ)) {
-                    blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                    chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
             }
 
@@ -468,7 +501,7 @@ void Renderer::render_end() {
                 cur = chunk->get(x, y, z);
                 if (cur.id == ID_NONE) continue;
 
-                blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
             }
         }
 
@@ -491,7 +524,7 @@ void Renderer::render_end() {
 
                 // if there is any chance of visibility
                 if (!(hasX && hasY && hasZ)) {
-                    blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                    chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
             }
 
@@ -505,7 +538,7 @@ void Renderer::render_end() {
                 cur = chunk->get(x, y, z);
                 if (cur.id == ID_NONE) continue;
 
-                blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
             }
         }
 
@@ -529,7 +562,7 @@ void Renderer::render_end() {
 
                 // if there is any chance of visibility
                 if (!(hasX && hasY && hasZ)) {
-                    blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                    chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                 }
             }
 
@@ -543,7 +576,7 @@ void Renderer::render_end() {
                 cur = chunk->get(x, y, z);
                 if (cur.id == ID_NONE) continue;
 
-                blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
             }
         }
 
@@ -569,16 +602,24 @@ void Renderer::render_end() {
 
                     // if there is any chance of visibility
                     if (!(hasX && hasY && hasZ)) {
-                        blocks.push_back({ chunk_pos + vec3(x, y, z), cur });
+                        chunk->cache.renderBlocks.push_back({ chunk_pos + vec3(x, y, z), cur });
                     }
                 }
             }
         }
     }
 
-    stime = getTime() - stime;
 
-    b_info("took %lfms", stime * 1000.0);
+    // reset them to not-dirty
+    for (int idx = 0; idx < torender_size; ++idx) {
+        auto item = torender[idx];
+        // just expand out the queue entry
+        ChunkID cid = item.first;
+        Chunk* chunk = item.second;
+
+        chunk->cache.isRenderDirty = false;
+    }
+
 
     // just compute this once
     mat4 gPV = gP * gV;
@@ -589,6 +630,23 @@ void Renderer::render_end() {
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/GrassBlock.jpg")->glTex);
     glBindVertexArray(mymesh->glVAO); 
 
+
+    // keep a list of all visible blocks
+    List< Pair<vec3, BlockInfo> > blocks;
+
+    //#pragma omp parallel for
+    for (int idx = 0; idx < torender_size; ++idx) {
+    //for (auto item : queue.chunks) {
+        auto item = torender[idx];
+        // just expand out the queue entry
+        ChunkID cid = item.first;
+        Chunk* chunk = item.second;
+
+        for (int jdx = 0; jdx < chunk->cache.renderBlocks.size(); ++jdx) {
+            blocks.push_back(chunk->cache.renderBlocks[jdx]);
+        }
+
+    }
 
     // actually render the blocks
     for (auto ritem : blocks) {
