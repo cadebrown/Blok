@@ -269,14 +269,34 @@ int main(int argc, char** argv) {
     // now, actually run the game
     Random::XorShift gen = Random::XorShift();
 
-    int i;
-    for (i = 0; i < 32; ++i) {
-        printf("%f ", gen.getF());
+    for (int i = 0; i < 40; ++i) {
+        int x = gen.getF() * 30;
+        for (int j = 0; j < x; ++j) {
+            printf("-");
+        }
+        printf("\n");
+    }
+
+    printf(" ** PERLIN ** \n");
+
+    // create a perlin generator
+    Random::PerlinMux pmgen = Random::PerlinMux();
+
+    pmgen.addLayer(Random::Perlin(1, vec3(0.01), vec2(0.4, 0.5), vec2(0.0, 30.0)));
+    pmgen.addLayer(Random::Perlin(2, vec3(0.04), vec2(0.0, 1.0), vec2(2.0, 18.0)));
+    pmgen.addLayer(Random::Perlin(3, vec3(0.1), vec2(0.4, 0.7), vec2(1.0, 10.0)));
+
+    double sm = 0.0;
+
+    double st = getTime();
+
+    for (int i = 0; i < 1000000; ++i) {
+        sm += pmgen.noise1d(i);
     }
 
 
-    printf("\n");
 
+    printf("sum: %lf, time: %lfms\n", sm, (getTime() - st) * 1000.0);
 
 
     return 0;

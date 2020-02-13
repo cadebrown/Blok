@@ -48,6 +48,12 @@ namespace Blok {
     using mat3 = glm::mat3;
     using mat4 = glm::mat4;
 
+
+    // popualte some types as vectors of integer coordinates (always append 'i' to these)
+    using vec2i = glm::vec<2, int>;
+    using vec3i = glm::vec<3, int>;
+
+
     // a type to store a string value, i.e. a character array
     // just use the standard definition, which is good for most
     // use cases
@@ -141,7 +147,7 @@ namespace Blok {
 
     // ChunkXZ - type defining the Chunk's macro coordinates world space
     // The actual world XZ is given by CHUNK_SIZE_X * XZ[0] and CHUNK_SIZE_Z * XZ[1]
-    using ChunkXZ = glm::vec<2, int>;
+    using ChunkXZ = vec2i;
 
     // Chunk - represents a vertical column of data of size:
     //   CHUNK_SIZE_X*CHUNK_SIZE_Y*CHUNK_SIZE_Z
@@ -227,6 +233,12 @@ namespace Blok {
         ~Chunk() {
             // free our allocated array
             delete[] this->blocks;
+
+            // remove our neighbor's references
+            rcache.cR->rcache.cL = NULL;
+            rcache.cT->rcache.cB = NULL;
+            rcache.cL->rcache.cR = NULL;
+            rcache.cB->rcache.cT = NULL;
         }
 
         // calculate the hash for the chunk
@@ -252,6 +264,31 @@ namespace Blok {
             return CHUNK_SIZE_Y * (CHUNK_SIZE_Z * x + z) + y;
         }
 
+        // get the linear index into 'blocks' array, given the 3D local coordinates
+        int getIndex(vec3i xyz) {
+            return getIndex(xyz[0], xyz[1], xyz[2]);
+        }
+
+        // inverse the linear index, and decompose it back into individual components, x, y, z
+        // NOTE: getIndexInv(getIndex(xyz)) == xyz
+        vec3i getIndexInv(int idx) {
+            vec3i res;
+            // first, get Y component
+            res[1] = idx % CHUNK_SIZE_Y;
+            idx /= CHUNK_SIZE_Y;
+            // then, get the Z component
+            res[2] = idx % CHUNK_SIZE_Z;
+            idx /= CHUNK_SIZE_Z;
+            // then, the X component is the last left
+            res[0] = idx % CHUNK_SIZE_X;
+
+            // ensure they are all positive
+            if (res[0] < 0) res[0] += CHUNK_SIZE_X;
+            if (res[1] < 0) res[1] += CHUNK_SIZE_Y;
+            if (res[2] < 0) res[2] += CHUNK_SIZE_Z;
+            return res;
+        }
+
         // get the block data at a given local coordinate
         // i.e. 0 <= x < BLOCK_SIZE_X
         // i.e. 0 <= y < BLOCK_SIZE_Y
@@ -268,6 +305,21 @@ namespace Blok {
         void set(int x=0, int y=0, int z=0, BlockData val=BlockData()) {
             const int idx = getIndex(x, y, z);
             blocks[idx] = val;
+        }
+
+        // return the world coordinates of the (0, 0, 0) local position 
+        vec3i getWorldPos(vec3i xyz=vec3i(0, 0, 0)) {
+            return vec3i(CHUNK_SIZE_X * XZ[0], 0, CHUNK_SIZE_Z * XZ[1]) + xyz;
+        }
+
+        // return a bounding box start in world position (inclusive)
+        vec3i getWorldBB0() {
+            return getWorldPos({0, 0, 0});
+        }
+
+        // return a bounding box end in world position (inclusive)
+        vec3i getWorldBB1() {
+            return getWorldPos({CHUNK_SIZE_X-1, CHUNK_SIZE_Y-1, CHUNK_SIZE_Z-1});
         }
 
     };
