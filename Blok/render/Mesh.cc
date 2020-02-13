@@ -11,6 +11,9 @@
 
 namespace Blok::Render {
 
+Map<String, Mesh*> Mesh::cache;
+
+
 // internal method to iterate through Assimp's structure
 static Mesh* processMesh(aiMesh *mesh/*, const aiScene *scene*/) {
 
@@ -89,36 +92,43 @@ static void processNode(List<Mesh*>& meshes, aiNode *node, const aiScene *scene)
 
 // load a mesh from a given file
 Mesh* Mesh::loadConst(const String& fname) {
-    // read file via ASSIMP
-    Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile(fname, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
-    // check for errors
-    if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-        blok_error("Failed to load model '%s' (err: %s)", fname.c_str(), importer.GetErrorString());
-        return NULL;
+
+    if (cache.find(fname) != cache.end()) {
+        return cache[fname];
+    } else {
+
+        // read file via ASSIMP
+        Assimp::Importer importer;
+        const aiScene* scene = importer.ReadFile(fname, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+        // check for errors
+        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+            blok_error("Failed to load model '%s' (err: %s)", fname.c_str(), importer.GetErrorString());
+            return NULL;
+        }
+        // retrieve the directory path of the filepath
+        //directory = path.substr(0, path.find_last_of('/'));
+
+        //int mesh_idx = scene->mRootNode->mMeshes[0];
+        //printf("%i\n", mesh_idx);
+        //return processMesh(scene->mMeshes[mesh_idx], scene);
+
+        // process ASSIMP's root node recursively
+        //processNode(scene->mRootNode, scene);
+
+        List<Mesh*> meshes;
+        processNode(meshes, scene->mRootNode, scene);
+
+        // delete all meshes except for the first one, because that's the one we'll use
+        for (uint i = 1; i < meshes.size(); ++i) {
+            delete meshes[i];
+        }
+
+        blok_debug("Loaded model '%s'", fname.c_str());
+
+        // return the first mesh found
+        return cache[fname] = meshes[0];
     }
-    // retrieve the directory path of the filepath
-    //directory = path.substr(0, path.find_last_of('/'));
 
-    //int mesh_idx = scene->mRootNode->mMeshes[0];
-    //printf("%i\n", mesh_idx);
-    //return processMesh(scene->mMeshes[mesh_idx], scene);
-
-    // process ASSIMP's root node recursively
-    //processNode(scene->mRootNode, scene);
-
-    List<Mesh*> meshes;
-    processNode(meshes, scene->mRootNode, scene);
-
-    // delete all meshes except for the first one, because that's the one we'll use
-    for (uint i = 1; i < meshes.size(); ++i) {
-        delete meshes[i];
-    }
-
-    blok_debug("Loaded model '%s'", fname.c_str());
-
-    // return the first mesh found
-    return meshes[0];
 }
 
 

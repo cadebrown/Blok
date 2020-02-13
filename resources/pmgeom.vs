@@ -24,10 +24,6 @@ out float fBlockID;
 uniform mat4 gPV;
 
 void main() {
-
-    // normal transform matrix (i.e. not counting offsets, this can be used for transforming normals)
-    //mat3 nT = mat3(gPVM);
-
     // calculate transformed position
     fPosition = gPV * vec4(aPos + gBlockPos, 1.0);
 

@@ -114,6 +114,12 @@ bool Client::frame() {
         }
     }
 
+
+    Render::Mesh* suz = Render::Mesh::loadConst("../resources/suzanne.obj");
+
+    gfx.renderer->renderMesh(suz, glm::translate(vec3(0, 100, 0)));
+
+
     // tell it we are done
     gfx.renderer->render_end();
 

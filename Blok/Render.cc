@@ -11,6 +11,28 @@ void Renderer::renderChunk(ChunkID id, Chunk* chunk) {
     queue.chunks[id] = chunk;
 }
 
+
+void Renderer::renderMesh(Mesh* mesh, mat4 T) {
+
+    // use the geometry shader
+    shaders["geom_mesh"]->use();
+
+    mat4 gPV = gP * gV;
+
+    // set up global matrices
+    shaders["geom_mesh"]->setMat4("gPV", gPV);
+    shaders["geom_mesh"]->setMat4("gM", T);
+
+    // bind the mesh data
+    glBindVertexArray(mesh->glVAO); 
+
+    // draw the basic cube mesh, with all the attributes given 
+    glDrawElements(GL_TRIANGLES, mesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
+
+
+
+}
+
 /*
 void Renderer::renderObj(mat4 gT) {
     // draw mesh

@@ -300,6 +300,7 @@ namespace Blok::Render {
             // construct the main geometry pass
             //shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
             shaders["geometry"] = Shader::load("resources/pmgeom.vs", "resources/pmgeom.fs");
+            shaders["geom_mesh"] = Shader::load("resources/geom.vs", "resources/geom.fs");
 
             // construct basic mesh
             /*mymesh = new Mesh({
@@ -336,6 +337,8 @@ namespace Blok::Render {
 
         // begin the rendering sequence
         void render_start();
+
+        void renderMesh(Mesh* mesh, mat4 T);
 
         // request for the renderer to render a chunk of the world
         // NOTE: must be between `render_start()` and `render_end()`!
