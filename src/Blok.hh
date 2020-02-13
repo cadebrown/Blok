@@ -59,12 +59,13 @@ namespace Blok {
     enum ID : uint8_t {
 
         // 0: NONE/AIR block
-        NONE     = 0,
+        NONE       = 0,
 
         // 1: DIRT block
-        DIRT     = 1,
+        DIRT       = 1,
+        DIRT_GRASS = 2,
 
-        STONE    = 2,
+        STONE      = 3,
 
     };
 
@@ -175,6 +176,11 @@ namespace Blok {
             // the result of that the renderer should render
             List< Pair<vec3, BlockInfo> > renderBlocks;
 
+
+            // a 2D linked list/fence
+
+            Chunk *cL, *cT, *cR, *cB;
+
         } cache;
 
         // construct a new data
@@ -189,6 +195,12 @@ namespace Blok {
             this->cache.curRenderHash = 0;
             this->cache.lastRenderHash = 0;
             this->cache.isRenderDirty = true;
+
+            // set all entries to NULL
+            this->cache.cL = NULL;
+            this->cache.cT = NULL;
+            this->cache.cR = NULL;
+            this->cache.cB = NULL;
         }
 
         // deallocation of a chunk

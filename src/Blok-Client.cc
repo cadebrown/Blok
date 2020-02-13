@@ -92,13 +92,19 @@ bool Client::frame() {
     renderer->render_start();
     //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    int N = 5;
+    ChunkID rendid = { renderer->pos.x / 16, renderer->pos.z / 16 };
+
+    // view distance in chunks
+    int N = 4;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
+
+            if (X * X + Z * Z > N * N + 3) continue;
             
             // get the current local chunk ID
-            ChunkID cid = {X, Z};
+            ChunkID cid = {rendid.X + X, rendid.Z + Z};
+            //ChunkID cid = {X, Z};
 
             // get our chunk
             Chunk* chunk = server->loadChunk(server->worlds["world"], cid);

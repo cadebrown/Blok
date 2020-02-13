@@ -12,6 +12,7 @@ layout (location = 2) out vec4 gUV;
 layout (location = 3) out vec4 gNormal;
 
 uniform sampler2D texDiffuse;
+uniform sampler2D texDiffuse2;
 
 void main() {
 

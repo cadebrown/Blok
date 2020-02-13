@@ -33,7 +33,15 @@ double get_d() {
 
 /* perlin noise */
 
-PerlinGen::PerlinGen(uint seed) {
+PerlinGen::PerlinGen(uint seed, vec3 scale, double clipMin, double clipMax, double valMin, double valMax) {
+
+	this->seed = seed;
+	this->scale = scale;
+
+	this->clipMin = clipMin;
+	this->clipMax = clipMax;
+	this->valMin = valMin;
+	this->valMax = valMax;
 
 	// Initialize the permutation vector with the reference values
 	if (seed == 0) {
@@ -81,6 +89,10 @@ double PerlinGen::grad(int hash, double x, double y, double z) {
 
 double PerlinGen::noise(double x, double y, double z) {
 
+	x *= scale.x;
+	y *= scale.y;
+	//z *= scale.z;
+
     // Find the unit cube that contains the point
 	int X = (int) floor(x) & 255;
 	int Y = (int) floor(y) & 255;
@@ -106,8 +118,53 @@ double PerlinGen::noise(double x, double y, double z) {
 
 	// Add blended results from 8 corners of cube
 	double res = lerp(w, lerp(v, lerp(u, grad(perm[AA], x, y, z), grad(perm[BA], x-1, y, z)), lerp(u, grad(perm[AB], x, y-1, z), grad(perm[BB], x-1, y-1, z))),	lerp(v, lerp(u, grad(perm[AA+1], x, y, z-1), grad(perm[BA+1], x-1, y, z-1)), lerp(u, grad(perm[AB+1], x, y-1, z-1),	grad(perm[BB+1], x-1, y-1, z-1))));
-	return (res + 1.0)/2.0;
+	res = (res + 1.0)/2.0;
 
+
+	//res = glm::clamp(res, clipMin, clipMax);
+	if (res < clipMin) res = clipMin;
+	else if (res > clipMax) res = clipMax;
+	res = ((res - clipMin) / (clipMax - clipMin)) * (valMax - valMin) + valMin;
+
+/*
+	res = ((res - clipMin) / (clipMax - clipMin)) * (valMax - valMin) + valMin;
+	*/
+
+	// return the result
+	return res;
+
+}
+
+
+
+    // individual generators to sum
+    List<PerlinGen*> pgens;
+
+    // construct one
+LayeredGen::LayeredGen() {
+
+}
+
+// add a layer to the result, returning the index
+int LayeredGen::addLayer(PerlinGen* pgen) {
+	int idx = pgens.size();
+	pgens.push_back(pgen);
+	return idx;
+}
+
+// return the ith layer
+PerlinGen* LayeredGen::getLayer(int idx) {
+	return pgens[idx];
+}
+
+double LayeredGen::noise(double x, double y, double z) {
+
+	double res = 0.0;
+	for (PerlinGen* pg : pgens) {
+		res += pg->noise(x, y, z);
+	}
+
+	return res;
 }
 
 

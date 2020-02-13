@@ -32,7 +32,7 @@ namespace Blok {
         public:
 
         // perlin noise generator
-        Random::PerlinGen* perlinGen;
+        Random::LayeredGen* layerGen;
 
         // construct a default world generator, given a seed
         DefaultWorldGenerator(uint seed=0);

@@ -10,12 +10,13 @@ layout (location = 2) in vec2 aUV;
 /* instanced values */
 //layout (location = 3) in mat4 gPVM;
 layout (location = 3) in vec3 gBlockPos;
-
+layout (location = 4) in float gBlockID;
 
 
 out vec4 fPosition;
 out vec2 fUV;
 out vec3 fN;
+out float fBlockID;
 flat out int fInstanceID;
 
 //uniform mat4 gM;
@@ -33,6 +34,7 @@ void main() {
     fUV = aUV;
     //fTBN = mat3(nT * aT, nT * aB, nT * aN);
     fN = aN;
+    fBlockID = gBlockID;
 
     // update opengl vars
     gl_Position = fPosition;

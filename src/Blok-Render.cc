@@ -160,17 +160,36 @@ void Renderer::render_end() {
         if (cL && cL->cache.curRenderHash == 0) cL->cache.curRenderHash = cL->getHash();
         if (cB && cB->cache.curRenderHash == 0) cB->cache.curRenderHash = cB->getHash();*/
 
-        // skip if everything has stayed the same
-        if (chunk->cache.curRenderHash == chunk->cache.lastRenderHash && 
-                (!cR || cR->cache.curRenderHash == cR->cache.lastRenderHash) &&
-                (!cT || cT->cache.curRenderHash == cT->cache.lastRenderHash) &&
-                (!cL || cL->cache.curRenderHash == cL->cache.lastRenderHash) &&
-                (!cB || cB->cache.curRenderHash == cB->cache.lastRenderHash)
-        ) continue;
 
-        // else, set the hash and continue on
-        chunk->cache.lastRenderHash = chunk->cache.curRenderHash;
+        if (chunk->cache.curRenderHash == chunk->cache.lastRenderHash) {
+            // the chunk hasn't changed, make sure the neighbors havent either
+            if (cL == chunk->cache.cL && cT == chunk->cache.cT && cR == chunk->cache.cR && cB == chunk->cache.cB) {
+                // all the members are the same
+                if (!cL || cL->cache.curRenderHash == cL->cache.lastRenderHash)
+                if (!cT || cT->cache.curRenderHash == cT->cache.lastRenderHash)
+                if (!cR || cR->cache.curRenderHash == cR->cache.lastRenderHash)
+                if (!cB || cB->cache.curRenderHash == cB->cache.lastRenderHash) {
+                    continue;
+                }
+            }
+        }
+
+        // skip if everything has stayed the same
+        /*if (chunk->cache.curRenderHash == chunk->cache.lastRenderHash && 
+                (cL == chunk->cache.cL || !cL || cL->cache.curRenderHash == cL->cache.lastRenderHash) &&
+                (cT == chunk->cache.cT || !cT || cT->cache.curRenderHash == cT->cache.lastRenderHash) &&
+                (cR == chunk->cache.cR || !cR || cR->cache.curRenderHash == cR->cache.lastRenderHash) &&
+                (cB == chunk->cache.cB || !cB || cB->cache.curRenderHash == cB->cache.lastRenderHash)
+        ) continue;*/
+
+        // else, set the hash & 2D linked list and continue on
+        // reset all the blocks that must be rendered, and recalculate them
         chunk->cache.renderBlocks.clear();
+
+        chunk->cache.cL = cL;
+        chunk->cache.cT = cT;
+        chunk->cache.cR = cR;
+        chunk->cache.cB = cB;
 
         // get the base position of the bottom left back corner
         vec3 chunk_pos(cid.X * CHUNK_SIZE, 0, cid.Z * CHUNK_SIZE);
@@ -549,25 +568,21 @@ void Renderer::render_end() {
         }
     }
 
-
-    // reset them to not-dirty
-    for (int idx = 0; idx < torender_size; ++idx) {
-        auto item = torender[idx];
-        // just expand out the queue entry
-        ChunkID cid = item.first;
-        Chunk* chunk = item.second;
-
-        chunk->cache.isRenderDirty = false;
-    }
-
-
     // just compute this once
     mat4 gPV = gP * gV;
 
     // now, set the diffuse texture for all blocks
     shaders["geometry"]->setInt("texDiffuse", 7);
+    shaders["geometry"]->setInt("texDiffuse2", 8);
+    shaders["geometry"]->setInt("texDiffuse3", 9);
     glActiveTexture(GL_TEXTURE7);
-    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/GENERIC.png")->glTex);
+    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/STONE.png")->glTex);
+    glActiveTexture(GL_TEXTURE8);
+    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/DIRT.png")->glTex);
+    glActiveTexture(GL_TEXTURE9);
+    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/DIRT_GRASS.png")->glTex);
+
+
     glBindVertexArray(mymesh->glVAO); 
 
     // keep a list of all visible blocks
@@ -590,9 +605,11 @@ void Renderer::render_end() {
     //List<mat4> mats_gM, mats_gPVM;
 
     List<vec3> positions;
+    List<float> ids;
     // collect all instances of blocks
     for (auto ritem : blocks) {
         positions.push_back(ritem.first);
+        ids.push_back((float)ID(ritem.second.id));
         //mat4 gM = glm::translate(ritem.first);
 
         // combine all 3 to get PVM
@@ -619,30 +636,72 @@ void Renderer::render_end() {
     glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
 
     glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
-    opengl_error_check();
     glVertexAttribDivisor(3, 1);  
-    printf("numblocks: %i\n", (int)positions.size());
 
 
-/*
+    glBindBuffer(GL_ARRAY_BUFFER, glIDVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * ids.size(), &ids[0], GL_STATIC_DRAW);
+    glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
+    glEnableVertexAttribArray(4);
+    glBindBuffer(GL_ARRAY_BUFFER, glIDVBO);
 
-    //glBindBuffer(GL_ARRAY_BUFFER, 0);	
+    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+    glVertexAttribDivisor(4, 1);  
 
-*/
+    opengl_error_check();
+
 
 
     // draw them
     glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, positions.size());
 
+    printf("numtris: %i\n", (int)(positions.size() * mymesh->faces.size()));
+
+
+    /* now, clear the render queue */
+
+    // set up flags on them
+    for (int idx = 0; idx < torender_size; ++idx) {
+        auto item = torender[idx];
+        // just expand out the queue entry
+        ChunkID cid = item.first;
+        Chunk* chunk = item.second;
+
+        // it is not dirty any more
+        chunk->cache.isRenderDirty = false;
+
+        // update the render hash as well
+        chunk->cache.lastRenderHash = chunk->cache.curRenderHash;
+
+    }
+
+    // remove them all from the queue
+    queue.chunks.clear();
+
+
+
     // draw to actual screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["geometry"]->glFBO);
 
-    // read from the 'color' render target
-    glReadBuffer(GL_COLOR_ATTACHMENT0);
+
+    glReadBuffer(GL_COLOR_ATTACHMENT0 );
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+
+    // read from the 'color' render target
+    /*
+    int aw = width / 2, ah = height / 2;
+    for (int i = 0; i < 2; ++i)
+    for (int j = 0; j < 2; ++j) {
+        glReadBuffer(GL_COLOR_ATTACHMENT0 + 2 * i + j);
+        glBlitFramebuffer(0, 0, width, height, i * aw, j * ah, (i+1) * aw, (j+1) * ah, GL_COLOR_BUFFER_BIT, GL_LINEAR);
+            
+    }*/
+
     opengl_error_check();
+
+
 
 }
 };

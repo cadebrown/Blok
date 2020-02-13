@@ -289,6 +289,7 @@ namespace Blok::Render {
 
         // the vertex buffer object for the block
         uint glBlockVBO;
+        uint glIDVBO;
 
 
 
@@ -337,7 +338,7 @@ namespace Blok::Render {
             clearColor = vec3(0.1f, 0.1f, 0.1f);
 
             // construct our geometry pass
-            targets["geometry"] = new Target(width, height, 1);
+            targets["geometry"] = new Target(width, height, 4);
 
             // construct the main geometry pass
             //shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
@@ -354,6 +355,7 @@ namespace Blok::Render {
             mymesh = new PackedBlockMesh(Mesh::load("../resources/DefaultCube.obj"));
 
             glGenBuffers(1, &glBlockVBO);
+            glGenBuffers(1, &glIDVBO);
             //glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
             //glBufferData(GL_ARRAY_BUFFER, sizeof(mat4), &translations[0], GL_STATIC_DRAW);
             //glBindBuffer(GL_ARRAY_BUFFER, 0); 

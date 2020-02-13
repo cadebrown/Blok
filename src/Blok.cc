@@ -130,7 +130,7 @@ int main(int argc, char** argv) {
     Server* server = new Server();
 
     // create a client attached to that server
-    Client* client = new Client(server, 800, 600);
+    Client* client = new Client(server, 1280, 800);
 
     // create a world to render
     World* world = new World();
@@ -167,6 +167,14 @@ int main(int argc, char** argv) {
         if (client->keysPressed[GLFW_KEY_S]) {
             client->renderer->pos -= speed * (float)dt * moveZ;
         }
+
+        if (client->keysPressed[GLFW_KEY_D]) {
+            client->renderer->pos += speed * (float)dt * moveX;
+        }
+        if (client->keysPressed[GLFW_KEY_A]) {
+            client->renderer->pos -= speed * (float)dt * moveX;
+        }
+
 
         /*
 
