@@ -31,9 +31,9 @@ namespace Blok::WG {
         }
 
 
-        // method to generate a single chunk, given the ChunkXZ macro coordinates
+        // method to generate a single chunk, given the ChunkID macro coordinates
         // the position of the given chunk is CHUNK_SIZE * cx, 0 through CHUNK_HEIGHT, CHUNK_SIZE * cz
-        virtual Chunk* getChunk(ChunkXZ id) = 0;
+        virtual Chunk* getChunk(ChunkID id) = 0;
     };
 
 
@@ -46,11 +46,14 @@ namespace Blok::WG {
         // perlin noise generator
         Random::PerlinMux pmgen;
 
+        // cave generator
+        Random::PerlinMux cavegen;
+
         // construct given a seed
         DefaultWG(uint32_t seed=0);
 
         // generate a chunk from a given ChunkID
-        Chunk* getChunk(ChunkXZ id);
+        Chunk* getChunk(ChunkID id);
 
     };
 

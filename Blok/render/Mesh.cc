@@ -88,7 +88,7 @@ static void processNode(List<Mesh*>& meshes, aiNode *node, const aiScene *scene)
 
 
 // load a mesh from a given file
-Mesh* Mesh::loadCopy(const String& fname) {
+Mesh* Mesh::loadConst(const String& fname) {
     // read file via ASSIMP
     Assimp::Importer importer;
     const aiScene* scene = importer.ReadFile(fname, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);

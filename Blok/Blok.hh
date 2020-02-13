@@ -23,6 +23,8 @@
 
 /* GLM (matrix & vector library) */
 #include <Blok/glm/glm.hpp>
+#define GLM_ENABLE_EXPERIMENTAL
+#include <Blok/glm/gtx/hash.hpp>
 
 /* gl3w (OpenGL loader) */
 #include <Blok/gl3w/gl3w.h>
@@ -32,6 +34,9 @@
 
 /* PortAudio (Audio Input/Output Library) */
 #include "portaudio.h"
+
+// define this operator so that XZs can be used as keys
+bool operator<(const glm::ivec2 A, const glm::ivec2 B);
 
 
 namespace Blok {
@@ -145,9 +150,23 @@ namespace Blok {
 
     };
 
-    // ChunkXZ - type defining the Chunk's macro coordinates world space
-    // The actual world XZ is given by CHUNK_SIZE_X * XZ[0] and CHUNK_SIZE_Z * XZ[1]
-    using ChunkXZ = vec2i;
+    // ChunkID - type defining the Chunk's macro coordinates world space
+    // The actual world XZ is given by CHUNK_SIZE_X * XZ.X and CHUNK_SIZE_Z * XZ.Z
+    struct ChunkID {
+        int X, Z;
+
+        ChunkID(int X=0, int Z=0) {
+            this->X = X;
+            this->Z = Z;
+        }
+    };
+
+    // elementwise operators
+    ChunkID operator+(ChunkID A, ChunkID B);
+    ChunkID operator-(ChunkID A, ChunkID B);
+
+    // so that ChunkIDs are well ordered
+    bool operator<(ChunkID A, ChunkID B);
 
     // Chunk - represents a vertical column of data of size:
     //   CHUNK_SIZE_X*CHUNK_SIZE_Y*CHUNK_SIZE_Z
@@ -181,7 +200,7 @@ namespace Blok {
         public:
 
         // the macro coordinates, i.e. 2D lattice index of the Chunk
-        ChunkXZ XZ;
+        ChunkID XZ;
 
         // the array of blocks that make up the chunk, they are ordered in XZY order,
         // i.e. the the Y coordinates are the fastest changing
@@ -205,12 +224,16 @@ namespace Blok {
             // keep track of hashes, to check if anything changed
             uint64_t curHash, lastHash;
 
+            bool isDirty;
+
             // pointers to other chunks that are spacially touching this chunk
             // NOTE: see the diagram above the definition for 'class Chunk' for a visual
             //   diagram of these
             // if one is NULL, that means that Chunk is not in the rendering engine currently,
             //   so the chunk is 'open'
             Chunk *cL, *cT, *cR, *cB;
+
+            List< Pair<vec3, BlockData> > renderBlocks;
 
         } rcache;
 
@@ -223,6 +246,8 @@ namespace Blok {
             // initialize the render cache
             // 0=not calculated yet
             rcache.curHash = rcache.lastHash = 0;
+
+            rcache.isDirty = true;
 
             // assume there are no valid chunks to start off with
             rcache.cL = rcache.cT = rcache.cR = rcache.cB = NULL;
@@ -305,11 +330,12 @@ namespace Blok {
         void set(int x=0, int y=0, int z=0, BlockData val=BlockData()) {
             const int idx = getIndex(x, y, z);
             blocks[idx] = val;
+            rcache.isDirty = true;
         }
 
         // return the world coordinates of the (0, 0, 0) local position 
         vec3i getWorldPos(vec3i xyz=vec3i(0, 0, 0)) {
-            return vec3i(CHUNK_SIZE_X * XZ[0], 0, CHUNK_SIZE_Z * XZ[1]) + xyz;
+            return vec3i(CHUNK_SIZE_X * XZ.X, 0, CHUNK_SIZE_Z * XZ.Z) + xyz;
         }
 
         // return a bounding box start in world position (inclusive)
@@ -373,6 +399,7 @@ namespace Blok {
 
 
 };
+
 
 
 

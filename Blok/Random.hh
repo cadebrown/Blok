@@ -221,7 +221,14 @@ class Perlin {
         z *= scale.z;
 
         // compute discrete sample points, and their next coordinate
-        int x0 = (int)floor(x) & 0xFF, y0 = (int)floor(y) & 0xFF, z0 = (int)floor(z);
+        int x0 = (int)floor(x) % tableSize, y0 = (int)floor(y) % tableSize, z0 = (int)floor(z) % tableSize;
+
+        if (x0 < 0) x0 += tableSize;
+        if (y0 < 0) y0 += tableSize;
+        if (z0 < 0) z0 += tableSize;
+        //printf("%i,%i,%i\n", x0, y0, z0);
+
+
         // convert them all to unit cube coordinates
         x -= floor(x);
         y -= floor(y);
@@ -230,25 +237,25 @@ class Perlin {
         // compute fractional portion of the sample point, always between 0 and 1
         double xf = fade(x), yf = fade(y), zf = fade(z);
 
+
         // coordinates in a 3D cube
-        int A = perms[x0] + y0;
-        int AA = perms[A] + z0;
-        int AB = perms[A + 1] + z0;
+        int A = perms[x0 % tableSize] + y0;
+        int AA = perms[A % tableSize] + z0;
+        int AB = perms[(A + 1) % tableSize] + z0;
 
-        int B = perms[x0 + 1] + y0;
-        int BA = perms[B] + z0;
-        int BB = perms[B + 1] + z0;
-
+        int B = perms[(x0 + 1) % tableSize] + y0;
+        int BA = perms[B % tableSize] + z0;
+        int BB = perms[(B + 1) % tableSize] + z0;
 
         // blender corners of the cube
         double res = lerp(zf, 
             lerp(yf, 
-                lerp(xf, grad(perms[AA], x, y, z), grad(perms[BA], x-1, y, z)), 
-                lerp(xf, grad(perms[AB], x, y-1, z), grad(perms[BB], x-1, y-1, z))
+                lerp(xf, grad(perms[AA % tableSize], x, y, z), grad(perms[BA % tableSize], x-1, y, z)), 
+                lerp(xf, grad(perms[AB % tableSize], x, y-1, z), grad(perms[BB % tableSize], x-1, y-1, z))
             ),	
             lerp(yf, 
-                lerp(xf, grad(perms[AA+1], x, y, z-1), grad(perms[BA+1], x-1, y, z-1)), 
-                lerp(xf, grad(perms[AB+1], x, y-1, z-1), grad(perms[BB+1], x-1, y-1, z-1))
+                lerp(xf, grad(perms[(AA+1) % tableSize], x, y, z-1), grad(perms[(BA+1) % tableSize], x-1, y, z-1)), 
+                lerp(xf, grad(perms[(AB+1) % tableSize], x, y-1, z-1), grad(perms[(BB+1) % tableSize], x-1, y-1, z-1))
             )
         );
         res = (res + 1.0)/2.0;

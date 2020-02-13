@@ -19,7 +19,25 @@
 #define RED    "\033[31m"
 #define YELLOW "\033[33m"
 
+/* MISC */
+
+
 namespace Blok {
+
+
+
+bool operator<(ChunkID A, ChunkID B) {
+    if (A.X == B.X) return A.Z > B.Z;
+    else return A.X > B.X;
+}
+
+ChunkID operator+(ChunkID A, ChunkID B) {
+    return ChunkID(A.X+B.X, A.Z+B.Z);
+}
+ChunkID operator-(ChunkID A, ChunkID B) {
+    return ChunkID(A.X-B.X, A.Z-B.Z);
+
+}
 
 /* LOGGING */
 
@@ -78,10 +96,10 @@ void log_internal(LogLevel level, const char *file, int line, const char* fmt, .
         else {
             // try and go up another directory
             const char* upone = strrchr(file, '/');
-            fname = upone ? upone : fname;
+            fname = upone ? upone + 1 : fname + 1;
         }
 
-        fprintf(stderr, "(@%s:%i)", fname, line);
+        fprintf(stderr, " (@%s:%i)", fname, line);
     }
 
 
@@ -172,8 +190,6 @@ List<String> paths = { ".", ".." };
 // initialize everyting in Blok
 bool initAll() {
 
-    setLogLevel(LogLevel::DEBUG);
-
     // initialize openGL stuffs
     gl3wInit();
 
@@ -207,6 +223,11 @@ bool initAll() {
     // output some information
     blok_info("Blok initialized successfully!");
 
+    blok_trace("sizeof(BlockData)==%ib", (int)sizeof(BlockData));
+    blok_trace("sizeof(ID)==%ib", (int)sizeof(ID));
+    int cb = CHUNK_NUM_BLOCKS * sizeof(BlockData);
+    blok_trace("Chunk size: %ix%ix%i (%i blocks) (%ib, %ikb)", CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_NUM_BLOCKS, cb, cb / 1024);
+
 
     return true;
 }
@@ -218,8 +239,75 @@ bool initAll() {
 /* COMMANDLINE APP */
 
 #include <Blok/Random.hh>
+#include <Blok/Server.hh>
+#include <Blok/Client.hh>
 
 using namespace Blok;
+
+
+// run a check of algorithms
+void runTests() {
+    int N = 1000000, B = 4;
+    uint32_t tmp = 0;
+
+    printf(" -*- Blok v%i.%i.%i %s Tests -*-\n", BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "");
+    printf(" -*- 1: Random::XorShift::getU32 (N=%i) -*-\n", N);
+    Random::XorShift rnd = Random::XorShift(0);
+
+    double st = getTime();
+    for (int i = 0; i < N; ++i) {
+        uint32_t r = rnd.getU32();
+        tmp += r;
+
+        if (i == N - B) printf("... ");
+        if (i < B || N - i <= B) printf("0x%x ", r);
+    }
+    printf("\n");
+    st = getTime() - st;
+
+    printf("Speed %lfMsmp/sec\n", 1e-6 * N / st);
+
+    printf(" -*- 2: Random::Perlin::noise1d (N=%i) -*-\n", N);
+
+    Random::Perlin prnd = Random::Perlin(0);
+
+    st = getTime();
+    for (int i = 0; i < N; ++i) {
+        double r = prnd.noise1d(0.123456 * i);
+        tmp += r;
+
+        if (i == N - B) printf("... ");
+        if (i < B || N - i <= B) printf("%.3lf ", r);
+    }
+    printf("\n");
+    st = getTime() - st;
+
+    printf("Speed %lfMsmp/sec\n", 1e-6 * N / st);
+
+
+    printf(" -*- 3: Random::Perlin::noise2d (N=%i,M=%i) -*-\n", N / 1000, 1000);
+
+    st = getTime();
+    int ct = 0;
+    for (int i = 0; i < N / 1000; ++i) {
+        for (int j = 0; j < 1000; ++j) {
+
+            double r = prnd.noise2d(0.123456 * i, 0.0372983 * j);
+            tmp += r;
+
+            if (ct == N - B) printf("... ");
+            if (ct < B || N - ct <= B) printf("%.3lf ", r);
+            ct++;
+        }
+
+    }
+    printf("\n");
+    st = getTime() - st;
+
+    printf("Speed %lfMsmp/sec\n", 1e-6 * N / st);
+
+}
+
 
 int main(int argc, char** argv) {
 
@@ -230,18 +318,22 @@ int main(int argc, char** argv) {
     int opt;
 
     // parse arguments 
-    while ((opt = getopt(argc, argv, "o:vh")) != -1) {
+    while ((opt = getopt(argc, argv, "Tvh")) != -1) {
         if (opt == 'h') {
             // print help
             printf("Usage: %s [-h]\n\n", argv[0]);
             printf("  -h           Prints this help/usage message\n");
+            printf("  -T           Run some sanity checks\n");
             printf("\nBlok v%i.%i.%i %s\n", BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "");
             printf("Cade Brown <brown.cade@gmail.com>\n");
             return 0;
         } else if (opt == 'v') {
             // increate verbosity
-            setLogLevel((LogLevel)(getLogLevel()+1));
-            continue;
+            setLogLevel((LogLevel)((int)getLogLevel()-1));
+        } else if (opt == 'T') {
+            // run a test
+            runTests();
+            return 0;
         } else if (opt == '?') {
             fprintf(stderr, "Unknown option '-%c', run with '-h' to see help message\n", optopt);
             return -1;
@@ -260,43 +352,86 @@ int main(int argc, char** argv) {
         optind++;
     }
 
-
-
     // try and initialize blok
     if (!initAll()) return -1;
 
+    // create a local server
+    Server* server = new LocalServer();
 
-    // now, actually run the game
-    Random::XorShift gen = Random::XorShift();
+    Client* client = new Client(server, 1280, 800);
 
-    for (int i = 0; i < 40; ++i) {
-        int x = gen.getF() * 30;
-        for (int j = 0; j < x; ++j) {
-            printf("-");
+    blok_info("Initialized with: OpenGL: %s, GLSL: %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
+
+    // just update
+    client->gfx.renderer->pos = vec3(0, 14, -10);
+
+    int n = 0;
+    double ltime = getTime();
+
+    float speed = 250.0f;
+    client->gfx.renderer->pos = vec3(8, 40, 8);
+
+    do {
+        
+        vec3 moveZ = client->gfx.renderer->forward;
+        moveZ = normalize(moveZ);
+
+        vec3 moveX = glm::cross(client->gfx.renderer->up, client->gfx.renderer->forward);
+        moveX.y = 0;
+        moveX = normalize(moveX);
+
+        double ctime = getTime();
+        double dt = ctime - ltime;
+        ltime = ctime;
+        if (client->input.keys[GLFW_KEY_W]) {
+            client->gfx.renderer->pos += speed * (float)dt * moveZ;
         }
-        printf("\n");
-    }
+        if (client->input.keys[GLFW_KEY_S]) {
+            client->gfx.renderer->pos -= speed * (float)dt * moveZ;
+        }
 
-    printf(" ** PERLIN ** \n");
-
-    // create a perlin generator
-    Random::PerlinMux pmgen = Random::PerlinMux();
-
-    pmgen.addLayer(Random::Perlin(1, vec3(0.01), vec2(0.4, 0.5), vec2(0.0, 30.0)));
-    pmgen.addLayer(Random::Perlin(2, vec3(0.04), vec2(0.0, 1.0), vec2(2.0, 18.0)));
-    pmgen.addLayer(Random::Perlin(3, vec3(0.1), vec2(0.4, 0.7), vec2(1.0, 10.0)));
-
-    double sm = 0.0;
-
-    double st = getTime();
-
-    for (int i = 0; i < 1000000; ++i) {
-        sm += pmgen.noise1d(i);
-    }
+        if (client->input.keys[GLFW_KEY_D]) {
+            client->gfx.renderer->pos += speed * (float)dt * moveX;
+        }
+        if (client->input.keys[GLFW_KEY_A]) {
+            client->gfx.renderer->pos -= speed * (float)dt * moveX;
+        }
 
 
+        /*
 
-    printf("sum: %lf, time: %lfms\n", sm, (getTime() - st) * 1000.0);
+        if (client->keysPressed[GLFW_KEY_SPACE]) {
+            client->renderer->pos += vec3(0, 4, 0);
+        }  
+        ChunkID pchid = { client->renderer->pos.x / 16, client->renderer->pos.x / 16 };
+
+        Chunk* pch = client->server->loadChunk(client->server->worlds["world"], pchid);
+
+        glm::vec<3, int> localPos(client->renderer->pos);
+
+        localPos.x -= 16 * pchid.X;
+        localPos.z -= 16 * pchid.Z;
+
+        if (pch->get(localPos.x, localPos.y - 1, localPos.z).id != ID_NONE) {
+            printf("GROUNDED\n");
+        } else {
+            client->renderer->pos.y -= 0.1;
+        }
+        */
+
+        //client->renderer->pos += vec3(0.1, 0.0, 0.0);
+        client->yaw += dt * 0.4f * client->input.mouseDelta.x;
+        client->pitch += dt * 0.4f * client->input.mouseDelta.y;
+
+        //client->renderer->forward = glm::rotate((float)dt * 0.4f * -client->mouseDelta.x, vec3(0, 1, 0)) * vec4(client->renderer->forward, 0);
+        //client->renderer->forward = glm::rotate((float)dt * 0.4f * client->mouseDelta.y, vec3(0, 0, 1)) * vec4(client->renderer->forward, 0);
+
+        if (client->N_frames % 100 == 0) {
+
+            printf("fps: %lf\n", 1 / dt);
+        }
+
+    } while (client->frame());
 
 
     return 0;

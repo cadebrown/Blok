@@ -1,23 +1,24 @@
 #version 330 core
 
-/* position relative to the local model */
+// local vertex position
 layout (location = 0) in vec3 aPos;
-layout (location = 1) in vec3 aN;
 
-/* texture coordinates */
-layout (location = 2) in vec2 aUV;
+// UV tex coords
+layout (location = 1) in vec2 aUV;
 
-/* instanced values */
-//layout (location = 3) in mat4 gPVM;
-layout (location = 3) in vec3 gBlockPos;
-layout (location = 4) in float gBlockID;
+// Tangent, Bitangent, Normal space
+layout (location = 2) in vec3 aT;
+layout (location = 3) in vec3 aB;
+layout (location = 4) in vec3 aN;
 
+// Instance values (block position in the world, and ID)
+layout (location = 5) in vec3 gBlockPos;
+layout (location = 6) in float gBlockID;
 
 out vec4 fPosition;
 out vec2 fUV;
 out vec3 fN;
 out float fBlockID;
-flat out int fInstanceID;
 
 //uniform mat4 gM;
 uniform mat4 gPV;
@@ -27,18 +28,19 @@ void main() {
     // normal transform matrix (i.e. not counting offsets, this can be used for transforming normals)
     //mat3 nT = mat3(gPVM);
 
-
-    // update fragment vars
-    //fPosition = gPVM * vec4(aPos, 1.0);
+    // calculate transformed position
     fPosition = gPV * vec4(aPos + gBlockPos, 1.0);
+
+    // just send the UV over
     fUV = aUV;
-    //fTBN = mat3(nT * aT, nT * aB, nT * aN);
+
+    // send the normal over (TODO: include just the model scaling here)
     fN = aN;
+
+    // send the block ID over
     fBlockID = gBlockID;
 
     // update opengl vars
     gl_Position = fPosition;
-
-    fInstanceID = gl_InstanceID;
 
 }

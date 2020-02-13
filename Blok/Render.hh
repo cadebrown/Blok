@@ -224,6 +224,139 @@ namespace Blok::Render {
 
     };
 
+
+    // Renderer : a construct for rendering the entire game state, including chunks, entities, 
+    //   GUIs, markup, etc
+    // This should be the primary object calling OpenGL rendering commands
+    // Internally, 
+    class Renderer {
+        public:
+
+        // the width/height (in pixels) of the output Target
+        int width, height;
+
+        Mesh* mymesh;
+
+        // various render targets, for different stages in processing
+        Map<String, Target*> targets;
+
+        // various shaders
+        Map<String, Shader*> shaders;
+
+        // the default background color
+        vec3 clearColor;
+
+        // the vertex buffer object for the block
+        uint glBlockVBO;
+        uint glIDVBO;
+
+        // the field of view, in degrees
+        float FOV;
+
+        // position of the renderer in world space
+        vec3 pos;
+
+        // the 'up' direction of the renderer in world space
+        vec3 up;
+
+        // the direction the renderer is looking
+        vec3 forward;
+
+
+        // the current matrices cache (projection, view)
+        mat4 gP, gV;
+
+
+        // the current queue of things that need to be rendered in the current frame
+        struct RendererQueue {
+            
+            // all requested chunks that need to be rendered
+            Map<ChunkID, Chunk*> chunks;
+
+        } queue;
+
+        // construct a new Renderer
+        Renderer(int width, int height) {
+            this->width = width;
+            this->height = height;
+
+            // position
+            pos = vec3(0, 0, 0);
+
+            // look forward in Z direction
+            forward = vec3(0, 0, 1);
+
+            // be looking directly up
+            up = vec3(0, 1, 0);
+
+            FOV = 120.0f;
+
+            // add a nice default color
+            clearColor = vec3(0.1f, 0.1f, 0.1f);
+
+            // construct our geometry pass
+            targets["geometry"] = new Target(width, height, 4);
+
+            // construct the main geometry pass
+            //shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
+            shaders["geometry"] = Shader::load("resources/pmgeom.vs", "resources/pmgeom.fs");
+
+            // construct basic mesh
+            /*mymesh = new Mesh({
+                { vec3(1.0f, 0.0f, 0.0f), vec2(0.0f, 0.0f) },
+                { vec3(0.0f, 1.0f, 0.0f), vec2(1.0f, 0.0f) },
+                { vec3(0.0f, 0.0f, 1.0f), vec2(0.0f, 1.0f) }
+            }, {
+                {0, 1, 2}
+            });*/
+            mymesh = Mesh::loadConst("../resources/DefaultCube.obj");
+
+            glGenBuffers(1, &glBlockVBO);
+            glGenBuffers(1, &glIDVBO);
+            //glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
+            //glBufferData(GL_ARRAY_BUFFER, sizeof(mat4), &translations[0], GL_STATIC_DRAW);
+            //glBindBuffer(GL_ARRAY_BUFFER, 0); 
+
+        }
+
+        // deconstruct the renderer
+        ~Renderer() {
+            // remove all created rendertargets
+            for (auto keyval : targets) {
+                delete keyval.second;
+            }
+        }
+
+        // get the final output target of the renderer
+        Target* getOutputTarget() {
+            // for now, just output the geometry
+            return targets["geometry"];
+        }
+
+
+        // begin the rendering sequence
+        void render_start();
+
+        // request for the renderer to render a chunk of the world
+        // NOTE: must be between `render_start()` and `render_end()`!
+        void renderChunk(ChunkID id, Chunk* chunk);
+
+        // finalize the rendering sequence
+        void render_end();
+
+
+
+        // render a single entity
+        //void renderEntity(Entity* entity);
+
+        // render an entire chunk
+        //void renderChunk(ChunkID id, Chunk* chunk);
+
+
+
+    };
+
+
 }
 
 #endif /* BLOK_RENDER_HH__ */
