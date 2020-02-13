@@ -15,11 +15,11 @@ DefaultWG::DefaultWG(uint32_t seed) {
 
     // add a basic layer
     pmgen.addLayer(Random::Perlin(seed++, vec3(0.002), vec2(0.3, 0.65), vec2(30, 80)));
-    pmgen.addLayer(Random::Perlin(seed++, vec3(0.02), vec2(0.2, 0.9), vec2(0, 4)));
+    pmgen.addLayer(Random::Perlin(seed++, vec3(0.02), vec2(0.2, 0.9), vec2(0, 20)));
     pmgen.addLayer(Random::Perlin(seed++, vec3(0.002, .03, 0.0), vec2(0.7, 0.72), vec2(0, -40)));
 
     cavegen = Random::PerlinMux();
-    //cavegen.addLayer(Random::Perlin(seed++, vec3(0.02, 0.06, 0.02), vec2(0.4, 0.55)));
+    cavegen.addLayer(Random::Perlin(seed++, vec3(0.03, 0.09, 0.03)));
 
 }
 
@@ -66,9 +66,9 @@ Chunk* DefaultWG::getChunk(ChunkID id) {
     for (x = 0; x < CHUNK_SIZE_X; ++x) {
         for (z = 0; z < CHUNK_SIZE_Z; ++z) {
 
-            for (y = 10; y < 30; ++y) {
+            for (y = 10; y < 50; ++y) {
                 double smp = cavegen.noise3d(id.X * CHUNK_SIZE_X + x, y, id.Z * CHUNK_SIZE_Z + z);
-                if (smp > 0.99) {
+                if (smp > 0.6) {
                     // clear it out
                     res->set(x, y, z, BlockData(ID::AIR));
                 }

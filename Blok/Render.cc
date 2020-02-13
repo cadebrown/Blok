@@ -630,6 +630,7 @@ void Renderer::render_end() {
     glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, positions.size());
 
 
+
     // do an error check
     check_GL();
 
@@ -674,7 +675,7 @@ void Renderer::render_end() {
     stim = getTime() - stim;
     static int ct = 0;
     if (++ct % 100 == 0) printf("gfx proc: %lfms\n", 1000.0 * stim);
-
+    if (ct % 100 == 0) blok_debug("tris: %i", (int)(mymesh->faces.size() * ids.size()));
 
 
 }
