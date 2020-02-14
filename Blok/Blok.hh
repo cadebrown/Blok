@@ -233,9 +233,23 @@ namespace Blok {
             //   so the chunk is 'open'
             Chunk *cL, *cT, *cR, *cB;
 
+            // vertex buffer of all the blocks, as (x:f, y:f, z:f)
+            uint glVBO_blocks;
+
+            // vertex buffer of all the blocks's IDs, as (id:f)
+            uint glVBO_ids;
+
+
             List< Pair<vec3, BlockData> > renderBlocks;
 
+
+
         } rcache;
+
+        // internal methods called by the rendering engine
+
+        // calculate the glVBO_blocks used by the rendering engine
+        void calcVBO();
 
 
         // construct an empty chunk, defaulting to all air blocks
@@ -252,6 +266,11 @@ namespace Blok {
             // assume there are no valid chunks to start off with
             rcache.cL = rcache.cT = rcache.cR = rcache.cB = NULL;
 
+
+            // graphics init
+            glGenBuffers(1, &rcache.glVBO_blocks);
+            glGenBuffers(1, &rcache.glVBO_ids);
+
         }
 
         // free all resources in the chunk
@@ -264,6 +283,9 @@ namespace Blok {
             rcache.cT->rcache.cB = NULL;
             rcache.cL->rcache.cR = NULL;
             rcache.cB->rcache.cT = NULL;
+
+            // remove OpenGL handle
+            glDeleteBuffers(1, &rcache.glVBO_blocks);
         }
 
         // calculate the hash for the chunk

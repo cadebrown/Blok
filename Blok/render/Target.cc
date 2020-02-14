@@ -25,6 +25,8 @@ Target::Target(int width, int height, int numTex) {
     for (int i = 0 ; i < numTex; i++) {
         // initialize the texture
         glBindTexture(GL_TEXTURE_2D, glTex[i]);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);
         glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + i, GL_TEXTURE_2D, glTex[i], 0);
         glColorAttachments[i] = GL_COLOR_ATTACHMENT0 + i;
@@ -32,8 +34,7 @@ Target::Target(int width, int height, int numTex) {
 
     // generate depth buffer
     glBindTexture(GL_TEXTURE_2D, glDepth);
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT,
-                NULL);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT32F, width, height, 0, GL_DEPTH_COMPONENT, GL_FLOAT, NULL);
     glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, glDepth, 0);
 
     //glDrawBuffers(numTex, &glColorAttachments[0]);

@@ -19,7 +19,7 @@ DefaultWG::DefaultWG(uint32_t seed) {
     pmgen.addLayer(Random::Perlin(seed++, vec3(0.002, .03, 0.0), vec2(0.7, 0.72), vec2(0, -40)));
 
     cavegen = Random::PerlinMux();
-    cavegen.addLayer(Random::Perlin(seed++, vec3(0.03, 0.09, 0.03)));
+    //cavegen.addLayer(Random::Perlin(seed++, vec3(0.03, 0.09, 0.03)));
 
 }
 

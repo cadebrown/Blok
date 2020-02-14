@@ -6,7 +6,7 @@ add_executable (Blok
     gl3w/gl3w.c 
 
     # actual Blok code
-    Blok.cc Render.cc Client.cc
+    Blok.cc Render.cc Client.cc Chunk.cc
 
     # rendering utility
     render/Texture.cc render/Mesh.cc render/Shader.cc render/Target.cc

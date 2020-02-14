@@ -368,7 +368,7 @@ int main(int argc, char** argv) {
     int n = 0;
     double ltime = getTime();
 
-    float speed = 250.0f;
+    float speed = 100.0f;
     client->gfx.renderer->pos = vec3(8, 40, 8);
 
     do {
@@ -398,26 +398,6 @@ int main(int argc, char** argv) {
         }
 
 
-        /*
-
-        if (client->keysPressed[GLFW_KEY_SPACE]) {
-            client->renderer->pos += vec3(0, 4, 0);
-        }  
-        ChunkID pchid = { client->renderer->pos.x / 16, client->renderer->pos.x / 16 };
-
-        Chunk* pch = client->server->loadChunk(client->server->worlds["world"], pchid);
-
-        glm::vec<3, int> localPos(client->renderer->pos);
-
-        localPos.x -= 16 * pchid.X;
-        localPos.z -= 16 * pchid.Z;
-
-        if (pch->get(localPos.x, localPos.y - 1, localPos.z).id != ID_NONE) {
-            printf("GROUNDED\n");
-        } else {
-            client->renderer->pos.y -= 0.1;
-        }
-        */
 
         //client->renderer->pos += vec3(0.1, 0.0, 0.0);
         client->yaw += dt * 0.4f * client->input.mouseDelta.x;

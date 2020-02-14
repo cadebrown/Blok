@@ -11,6 +11,7 @@ static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int act
         // then we have a client object, so set the current key
         Client* client = (Client*)usr_ptr;
         client->input.keys[key] = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+        //printf("%d: %d\n", key, client->input.keys[key]);
     }
 }
 
@@ -94,7 +95,7 @@ bool Client::frame() {
     ChunkID rendid = { floor(gfx.renderer->pos.x / CHUNK_SIZE_Z), floor(gfx.renderer->pos.z / CHUNK_SIZE_Z) };
 
     // view distance in chunks
-    int N = 8;
+    int N = 16;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
@@ -126,7 +127,7 @@ bool Client::frame() {
     // clear input
     for (int i = 0; i < GLFW_KEY_LAST; ++i) {
         input.lastKeys[i] = input.keys[i];
-        input.keys[i] = false;
+        //input.keys[i] = false;
     }
 
     // update the frame

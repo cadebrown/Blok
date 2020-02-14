@@ -122,6 +122,11 @@ namespace Blok::Render {
         //   modify any data
         static Mesh* loadConst(const String& path);
         
+        // return the constant screen space quad for opengl
+        static Mesh* getConstSSQ() {
+            return loadConst("../resources/ssq.obj");
+        }
+
         // OpenGL handles to the Vertex Array Object, Vertex Buffer Object, and EBO
         // for rendering, you only care about VAO, and then drawing triangles from it,
         // which should have the data from 'vertices' and 'faces' in it
@@ -296,11 +301,13 @@ namespace Blok::Render {
 
             // construct our geometry pass
             targets["geometry"] = new Target(width, height, 4);
+            targets["ssq"] = new Target(width, height, 1);
 
             // construct the main geometry pass
             //shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
             shaders["geometry"] = Shader::load("resources/pmgeom.vs", "resources/pmgeom.fs");
             shaders["geom_mesh"] = Shader::load("resources/geom.vs", "resources/geom.fs");
+            shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
 
             // construct basic mesh
             /*mymesh = new Mesh({

@@ -53,7 +53,7 @@ void main() {
     vec3 N = normalize(fN);
     vec3 ldir = normalize(vec3(.5, -1, 1));
 
-    gColor = col * (.3 + .7 * max(0, -dot(N, ldir)));
+    gColor = col * (.5 + 1.0 * max(0, -dot(N, ldir)));
     gPosition = fPosition;
     gUV = vec4(fUV, 1.0f, 0.0f);
     gNormal = vec4(N, 0.0f);
