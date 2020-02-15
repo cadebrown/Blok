@@ -4,8 +4,8 @@
 //   so basically a screen quad
 layout (location = 0) in vec4 aPosUV;
 
-// the projection matrix for the camera orientation
-uniform mat4 gP;
+// the projection matrix * position matrix for the camera orientation
+uniform mat4 gPM;
 
 // fragment shader vars
 out vec2 fUV;
@@ -17,6 +17,6 @@ void main(){
     fUV = aPosUV.zw;
 
     // update opengl vars
-    gl_Position = gP * vec4(aPosUV.xy, 0.0, 1.0);
+    gl_Position = gPM * vec4(aPosUV.xy, 0.0, 1.0);
 }
 

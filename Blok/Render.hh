@@ -161,7 +161,9 @@ namespace Blok::Render {
     };
 
 
-    // UIText - class to render 2D text on the screen 
+    // UIText - class to render 2D text on the screen
+    // TODO: implement effects/outlines
+    // HERE: https://stackoverflow.com/questions/52086217/outline-fonts-with-true-type-and-opengl-core-3-3
     class UIText {
         public:
 
@@ -170,6 +172,9 @@ namespace Blok::Render {
 
         // the VAO and VBO objects for the screen quads
         uint glVAO, glVBO;
+
+        // number of triangles to render
+        int tris;
 
         // current text being rendered
         String text;
@@ -180,12 +185,22 @@ namespace Blok::Render {
             // the text that was last rendered
             String lastText;
 
+            // last value of max width
+            float lastMaxWidth;
+
         } cache;
 
+        // the maximum width (in pixels) for the UIText to render to
+        float maxWidth;
 
         // construct a UIText object from a given font
         // NOTE: set the text after this to actually see something
         UIText(FontTexture* font);
+
+
+        // recalculate the VBO object
+        void calcVBO();
+
     };
 
     /* MESH/GEOMETRY */
@@ -393,9 +408,8 @@ namespace Blok::Render {
             // See here: https://computergraphics.stackexchange.com/questions/37/what-is-the-cost-of-changing-state/46#46
             Map<Mesh*, List<mat4> > meshes;
 
-
-            // list of textures to render
-            //Map<FontTexture*, List<> > texts;
+            // list of strings to render on screen along with their positions
+            Map<FontTexture*, List< Pair<vec2, UIText*> > > texts;
 
         } queue;
 
@@ -441,7 +455,7 @@ namespace Blok::Render {
             // be looking directly up
             up = vec3(0, 1, 0);
 
-            FOV = 120.0f;
+            FOV = 180.0f;
 
             // add a nice default color
             clearColor = vec3(0.1f, 0.1f, 0.1f);
@@ -498,6 +512,9 @@ namespace Blok::Render {
         void render_start();
 
         void renderMesh(Mesh* mesh, mat4 T);
+
+        // render a string of text at a given screen location `pxy`
+        void renderText(vec2 pxy, UIText* text, vec2 scalexy={1,1});
 
         // request for the renderer to render a chunk of the world
         // NOTE: must be between `render_start()` and `render_end()`!

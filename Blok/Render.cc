@@ -15,11 +15,7 @@ void Renderer::resize(int w, int h) {
     // else, reset some stuff like the render targets
     targets["geometry"]->resize(width, height);
     targets["ssq"]->resize(width, height);
-
-
 }
-
-
 
 // render a chunk of data
 void Renderer::renderChunk(ChunkID id, Chunk* chunk) {
@@ -40,6 +36,13 @@ void Renderer::renderMesh(Mesh* mesh, mat4 T) {
     queue.meshes[mesh].push_back(T);
 
 }
+void Renderer::renderText(vec2 pxy, UIText* text, vec2 scalexy) {
+    if (queue.texts.find(text->font) == queue.texts.end()) {
+        queue.texts[text->font] = {};
+    }
+
+    queue.texts[text->font].push_back({pxy, text});
+}
 
 
 // begin the rendering sequence
@@ -54,8 +57,13 @@ void Renderer::render_end() {
     // gather some statistics
 
     // time spent processing chunks
-    double t_chunks = getTime();
+    stats.t_chunks = getTime();
 
+    // keep track of how many triangles there are
+    stats.n_tris = 0;
+
+    // number of chunk recalculations (i.e. lighting/mesh/etc )
+    stats.n_chunk_recalcs = 0;
 
     // calculate the perspective matrix
     gP = glm::perspective(
@@ -79,9 +87,6 @@ void Renderer::render_end() {
     // the number of chunk re-hashes
     int num_rehashes = 0;
 
-    // number of chunk recalculations (i.e. lighting/mesh/etc )
-    int num_recalcs = 0;
-
     // #1: Go through and filter all the chunks that were requested to be renderered
 
 
@@ -94,6 +99,9 @@ void Renderer::render_end() {
 
     // capture the number of chunks we need to compute, for a for loop index
     int N_chunks = torender.size();
+
+    // keep track of how many chunks rendered
+    stats.n_chunks = N_chunks;
 
     // first, make sure all hashes are up to date
     // NOTE: we seperate this into a loop before the main recalculation, so that
@@ -188,7 +196,7 @@ void Renderer::render_end() {
         chunk->calcVBO();
 
         // keep track of recalculations
-        num_recalcs++;
+        stats.n_chunk_recalcs++;
     }
 
     // now, reset the Chunk variables, mark them as rendered
@@ -205,19 +213,10 @@ void Renderer::render_end() {
     }
 
     // record the time it took
-    t_chunks = getTime() - t_chunks;
-
-    // record stats
-    stats.t_chunks = t_chunks;
-    stats.n_chunks = N_chunks;
-
-    // number of recalculations
-    stats.n_chunk_recalcs = num_recalcs;
+    stats.t_chunks = getTime() - stats.t_chunks;
 
     /* Now, actually render with OpenGL */
 
-    // keep track of how many triangles there are
-    int n_tris = 0;
 
     /* RENDER GEOMETRY PASS */
 
@@ -291,7 +290,7 @@ void Renderer::render_end() {
 
         glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, chunk->rcache.renderBlocks.size());
 
-        n_tris += mymesh->faces.size() * chunk->rcache.renderBlocks.size();
+        stats.n_tris += mymesh->faces.size() * chunk->rcache.renderBlocks.size();
     }
 
     // // Render misc. meshes out
@@ -314,17 +313,14 @@ void Renderer::render_end() {
             shaders["geom_mesh"]->setMat4("gM", T);             
             glDrawElements(GL_TRIANGLES, MTs.first->faces.size() * 3, GL_UNSIGNED_INT, 0);
 
-            n_tris += MTs.first->faces.size();
+            stats.n_tris += MTs.first->faces.size();
         }
     }
 
-    // do an error check and make sure everything was valid
-    check_GL();
 
     /* RENDER UI/TEXT PASS */
 
     // first, set up state
-/*
     // enable blending so just the colored parts of the text show up
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -334,81 +330,40 @@ void Renderer::render_end() {
 
     // use a simple orthographic projection in screen coordinates
     // TODO: use a normalized coordinate system? So that text scales linearly?
-    shaders["textquad"]->setMat4("gP", glm::ortho(0.0f, (float)width, 0.0f, (float)height));
+    mat4 gP_text = glm::ortho(0.0f, (float)width, 0.0f, (float)height);
 
-    // set up the font texture
-    glActiveTexture(GL_TEXTURE8);
-    glBindTexture(GL_TEXTURE_2D, mainFont->glTex);
-    shaders["textquad"]->setInt("texFont", 8);
+    for (auto& entry : queue.texts) {
+        FontTexture* ftext = entry.first;
+
+        // set up the font texture
+        glActiveTexture(GL_TEXTURE8);
+        glBindTexture(GL_TEXTURE_2D, ftext->glTex);
+        shaders["textquad"]->setInt("texFont", 8);
 
 
-    UIText* uit = new UIText(mainFont);
+        for (auto& uit : entry.second) {
+            if (uit.second->cache.lastText != uit.second->text || uit.second->cache.lastMaxWidth != uit.second->maxWidth) {
+                // recalculate it
+                uit.second->calcVBO();
 
-    // now, render the text
-    uit->text = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ !@#$%^&*()_+`-=[]\\{}|;':\",./<>?";
+                uit.second->cache.lastText = uit.second->text;
+                uit.second->cache.lastMaxWidth = uit.second->maxWidth;
+            }
 
-    glBindVertexArray(uit->glVAO);
+            // translate the position off
+            mat4 gM = glm::translate(vec3(uit.first.x, uit.first.y, 0.0));
+            shaders["textquad"]->setMat4("gPM", gP_text * gM);
 
-    float x = 25.0f, y = height - 48;
-
-    float scale = 0.3f;
-
-    // Render glyph texture over quad
-    glBindTexture(GL_TEXTURE_2D, uit->font->glTex);
-
-    // Iterate through all characters
-    std::string::const_iterator c;
-    for (c = uit->text.begin(); c != uit->text.end(); c++)
-    {
-
-        FontTexture::CharInfo ch = uit->font->charInfos[*c];
-
-        vec2i size = ch.texStop - ch.texStart;
-
-        if (x + size.x * scale >= width - 25.0f) {
-            x = 25.0f;
-            y -= 64.0f;
+            // now, draw it
+            glBindVertexArray(uit.second->glVAO);
+            glDrawArrays(GL_TRIANGLES, 0, 3 * uit.second->tris);
         }
-
-        GLfloat xpos = x + ch.bearing.x * scale;
-
-        GLfloat ypos = y - (size.y - ch.bearing.y) * scale;
-
-        GLfloat w = size.x * scale;
-        GLfloat h = size.y * scale;
-
-        vec2 uvStart = vec2(ch.texStart) / vec2(uit->font->width, uit->font->height);
-        vec2 uvStop = vec2(ch.texStop) / vec2(uit->font->width, uit->font->height);
-
-        // Update VBO for each character
-        GLfloat vertices[6][4] = {
-            { xpos,     ypos,       uvStart.x, uvStart.y },
-            { xpos,     ypos + h,   uvStart.x, uvStop.y },            
-            { xpos + w, ypos,       uvStop.x, uvStart.y },
-
-            { xpos,     ypos + h,   uvStart.x, uvStop.y },
-            { xpos + w, ypos + h,   uvStop.x, uvStop.y },
-            { xpos + w, ypos,       uvStop.x, uvStart.y },
-        };
-        
-        // Update content of VBO memory
-        glBindBuffer(GL_ARRAY_BUFFER, uit->glVBO);
-        glBufferSubData(GL_ARRAY_BUFFER, 0, sizeof(vertices), vertices); 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // Render quad
-        glDrawArrays(GL_TRIANGLES, 0, 6);
-        // Now advance cursors for next glyph (note that advance is number of 1/64 pixels)
-        x += (ch.advance >> 6) * scale; // Bitshift by 6 to get value in pixels (2^6 = 64)
     }
 
-    glBindVertexArray(0);
-    glBindTexture(GL_TEXTURE_2D, 0);
 
-    // draw all these attachments
 
-    // this just puts an image over the entire screen
-*/
+    // do an error check and make sure everything was valid
+    check_GL();
 
     Mesh* ssq = Mesh::getConstSSQ();
     glBindFramebuffer(GL_FRAMEBUFFER, targets["ssq"]->glFBO);
@@ -430,16 +385,7 @@ void Renderer::render_end() {
     // draw the quad
     glBindVertexArray(ssq->glVAO); 
     glDrawElements(GL_TRIANGLES, ssq->faces.size() * 3, GL_UNSIGNED_INT, 0);
-    n_tris += ssq->faces.size();
-
-    /*
-    glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["ssq"]->glFBO);
-    glReadBuffer(GL_COLOR_ATTACHMENT0);
-    glDrawBuffer(GL_BACK);
-    
-    glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    */
+    stats.n_tris += ssq->faces.size();
 
     // draw to actual screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -448,20 +394,6 @@ void Renderer::render_end() {
     glDrawBuffer(GL_BACK);
     
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
-    
-
-    // this code outputs all 4 components of the render texture
-    /*int aw = width / 2, ah = height / 2;
-    for (int i = 0; i < 2; ++i)
-    for (int j = 0; j < 2; ++j) {
-        glReadBuffer(GL_COLOR_ATTACHMENT0 + 2 * i + j);
-        glBlitFramebuffer(0, 0, width, height, i * aw, j * ah, (i+1) * aw, (j+1) * ah, GL_COLOR_BUFFER_BIT, GL_LINEAR);
-            
-    }*/
-
-    // update stats
-    stats.n_tris = n_tris;
-
 
     // now, clear the cache for the next run
 
@@ -469,6 +401,8 @@ void Renderer::render_end() {
     queue.chunks.clear();
     // clear all requested meshes
     queue.meshes.clear();
+    // clera all tests
+    queue.texts.clear();
 
     // do an error check
     check_GL();

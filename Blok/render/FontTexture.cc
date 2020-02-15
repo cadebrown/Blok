@@ -57,6 +57,9 @@ void FontTexture::addChar(char c) {
         // a hueristic row alignment value
         int align = 64;
 
+        // number of pixels to buffer between gluphs
+        int buff = 2;
+
         while (!isRefined && ct < maxTries) {
             isRefined = true;
 
@@ -70,21 +73,21 @@ void FontTexture::addChar(char c) {
                 if (pos.second.y > maxy) maxy = pos.second.y;
 
                 // check if we are intersecting the previous bounding box
-                bool overX = (cand.x >= pos.first.x && cand.x < pos.second.x) ||
-                    (cand.x + o_sx >= pos.first.x && cand.x + o_sx < pos.second.x);
-                bool overY = (cand.y >= pos.first.y && cand.y < pos.second.y) ||
-                            (cand.y + o_sy >= pos.first.y && cand.y + o_sy < pos.second.y);
+                bool overX = (cand.x >= pos.first.x && cand.x < pos.second.x + buff) ||
+                    (cand.x + o_sx >= pos.first.x && cand.x + o_sx < pos.second.x + buff);
+                bool overY = (cand.y >= pos.first.y && cand.y < pos.second.y + buff) ||
+                            (cand.y + o_sy >= pos.first.y && cand.y + o_sy < pos.second.y + buff);
 
                 // check for overlap
                 if (overX && overY) {
-                    cand.x = pos.second.x;
+                    cand.x = pos.second.x + buff;
                     isRefined = false;
                 }
 
                 if (cand.x + o_sx >= width) {
                     // overflow to next line
                     cand.x = 0;
-                    cand.y = pos.second.y;
+                    cand.y = pos.second.y + buff;
                     // add alignment to simulate rows
                     // I've noticed this results in more tighly packed maps most of the time,
                     // with the ability to still allocate space in most cases

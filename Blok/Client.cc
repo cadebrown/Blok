@@ -138,7 +138,7 @@ bool Client::frame() {
     ChunkID rendid = { (int)(floor(gfx.renderer->pos.x / CHUNK_SIZE_Z)), (int)(floor(gfx.renderer->pos.z / CHUNK_SIZE_Z)) };
 
     // view distance in chunks
-    int N = 8;
+    int N = 5;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
@@ -162,6 +162,22 @@ bool Client::frame() {
     Render::Mesh* suz = Render::Mesh::loadConst("assets/obj/Suzanne.obj");
 
     gfx.renderer->renderMesh(suz, glm::translate(vec3(16, 40, 16)) * glm::scale(vec3(10.0)));
+
+    static Render::UIText* uit = new Render::UIText(Render::FontTexture::loadConst("assets/fonts/ForcedSquare.ttf"));
+    static float displayFPS = 60.0;
+    // smooth it over time
+    displayFPS = (1 - dt) * displayFPS + dt * (1.0 / dt);
+    // info screen
+    char tmp[2048];
+    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %.1f, %.1f, %.1f\nchunk: %+i,%+i\nfps: %.1lf", 
+        BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
+        gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
+        rendid.X, rendid.Z,
+        displayFPS
+    );
+
+    uit->text = tmp;
+    gfx.renderer->renderText({10, gfx.renderer->height-10}, uit);
 
     // tell it we are done
     gfx.renderer->render_end();
@@ -232,7 +248,7 @@ void Client::setFullscreen(bool toFullscreen) {
         const GLFWvidmode * mode = glfwGetVideoMode(gfx.monitor);
 
         // switch to full screen
-        glfwSetWindowMonitor(gfx.window, gfx.monitor, 0, 0, mode->width, mode->height, 0 );
+        glfwSetWindowMonitor(gfx.window, gfx.monitor, 0, 0, mode->width, mode->height, mode->refreshRate );
 
 
     } else {
