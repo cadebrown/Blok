@@ -14,6 +14,14 @@ void Renderer::renderChunk(ChunkID id, Chunk* chunk) {
 
 void Renderer::renderMesh(Mesh* mesh, mat4 T) {
 
+    if (queue.meshes.find(mesh) == queue.meshes.end()) {
+        // add an empty list
+        queue.meshes[mesh] = {};
+    }
+
+    // now, push it on that list, so we mark it for rendering
+    queue.meshes[mesh].push_back(T);
+/*
     // use the geometry shader
     shaders["geom_mesh"]->use();
 
@@ -26,11 +34,11 @@ void Renderer::renderMesh(Mesh* mesh, mat4 T) {
     // bind the mesh data
     glBindVertexArray(mesh->glVAO); 
 
+    printf("RENDERMESH\n");
+
     // draw the basic cube mesh, with all the attributes given 
     glDrawElements(GL_TRIANGLES, mesh->faces.size() * 3, GL_UNSIGNED_INT, 0);
-
-
-
+*/
 }
 
 /*
@@ -199,6 +207,11 @@ void Renderer::render_end() {
         num_recalcs++;
     }
 
+    stim = getTime() - stim;
+    static int ct = 0;
+    if (++ct % 100 == 0) blok_debug("gfx proc: %lfms, n_recalcs: %i", 1000.0 * stim, num_recalcs);
+    //if (ct % 100 == 0) blok_debug("tris: %i", (int)(mymesh->faces.size() * ids.size()));
+
     /* Now, actually render with OpenGL */
 
     // enable depth testing
@@ -206,10 +219,15 @@ void Renderer::render_end() {
     glDepthFunc(GL_LESS);
     glEnable(GL_CULL_FACE);
     glCullFace(GL_FRONT);
+
+    /* RENDER GEOMETRY PASS */
     
     // first, set up the render target for the geometry pass (i.e. the scene geometry to image)
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targets["geometry"]->glFBO);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+
+    // DO CHUNKS
 
     // use our geometry pass
     shaders["geometry"]->use();
@@ -236,86 +254,59 @@ void Renderer::render_end() {
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/STONE.png")->glTex);
 
-
-    // render all the VBOs
     glBindVertexArray(mymesh->glVAO); 
 
+    glEnableVertexAttribArray(5);
+    glVertexAttribDivisor(5, 1);  
+
+    glEnableVertexAttribArray(6);
+    glVertexAttribDivisor(6, 1); 
+    
+    // render the chunks
     for (int idx = 0; idx < N_chunks; ++idx) {
         // just expand out the queue entry
         Chunk* chunk = torender[idx];
 
-        glEnableVertexAttribArray(5);
         glBindBuffer(GL_ARRAY_BUFFER, chunk->rcache.glVBO_blocks);
-
         glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
-        glVertexAttribDivisor(5, 1);  
 
-        glEnableVertexAttribArray(6);
         glBindBuffer(GL_ARRAY_BUFFER, chunk->rcache.glVBO_ids);
-
         glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-        glVertexAttribDivisor(6, 1); 
 
         glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, chunk->rcache.renderBlocks.size());
     }
 
 
 
-    /*glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * positions.size(), &positions[0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+    // DO MESHES
 
-    glEnableVertexAttribArray(5);
-    glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
+    // use the geometry shader
+    shaders["geom_mesh"]->use();
 
-    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
-    glVertexAttribDivisor(5, 1);  
+    // set up global matrices
+    shaders["geom_mesh"]->setMat4("gPV", gPV);
 
-    // set the VBO that contains their IDs
-    glBindBuffer(GL_ARRAY_BUFFER, glIDVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * ids.size(), &ids[0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
+    // loop through mesh & transform sets
+    for (const Pair< Mesh*, List<mat4> >& MTs : queue.meshes) {
 
-    glEnableVertexAttribArray(6);
-    glBindBuffer(GL_ARRAY_BUFFER, glIDVBO);
+        // bind the current mesh
+        glBindVertexArray(MTs.first->glVAO); 
 
-    glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-    glVertexAttribDivisor(6, 1);  */
+        // render all the transforms
+        // TODO: we could put them into a VBO
+        for (mat4 T : MTs.second) {
+            shaders["geom_mesh"]->setMat4("gM", T);
+             
+            glDrawElements(GL_TRIANGLES, MTs.first->faces.size() * 3, GL_UNSIGNED_INT, 0);
 
-/*
-
-    glBindVertexArray(mymesh->glVAO); 
-
-    // set the block position VBO data for all the blocks we need to render
-    glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * positions.size(), &positions[0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-
-    glEnableVertexAttribArray(5);
-    glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
-
-    glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
-    glVertexAttribDivisor(5, 1);  
-
-    // set the VBO that contains their IDs
-    glBindBuffer(GL_ARRAY_BUFFER, glIDVBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(float) * ids.size(), &ids[0], GL_STATIC_DRAW);
-    glBindBuffer(GL_ARRAY_BUFFER, 0); 
-
-    glEnableVertexAttribArray(6);
-    glBindBuffer(GL_ARRAY_BUFFER, glIDVBO);
-
-    glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-    glVertexAttribDivisor(6, 1);  
-*/
+        }
+    }
 
     // draw the basic cube mesh, with all the attributes given 
     //glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, positions.size());
 
-
     // do an error check
     check_GL();
-
 
     /* now, clear the render queue */
 
@@ -331,10 +322,6 @@ void Renderer::render_end() {
         chunk->rcache.lastHash = chunk->rcache.curHash;
 
     }
-
-    // remove them all from the queue
-    queue.chunks.clear();
-
 
     Mesh* ssq = Mesh::getConstSSQ();
 
@@ -354,6 +341,7 @@ void Renderer::render_end() {
     glActiveTexture(GL_TEXTURE6);
     //glBindTexture(GL_TEXTURE_2D, Texture::loadConst("../resources/DIRT.png")->glTex);
     glBindTexture(GL_TEXTURE_2D, targets["geometry"]->glTex[0]);
+    //glBindTexture(GL_TEXTURE_2D, mainFont->glTex);
 
 
     glBindVertexArray(ssq->glVAO); 
@@ -390,14 +378,16 @@ void Renderer::render_end() {
             
     }*/
 
+
+    // now, clear the cache for the next run
+
+    // remove all chunks requested for render
+    queue.chunks.clear();
+    // clear all requested meshes
+    queue.meshes.clear();
+
     // do an error check
     check_GL();
-
-    stim = getTime() - stim;
-    static int ct = 0;
-    if (++ct % 100 == 0) printf("gfx proc: %lfms\n", 1000.0 * stim);
-    //if (ct % 100 == 0) blok_debug("tris: %i", (int)(mymesh->faces.size() * ids.size()));
-
 
 }
 };

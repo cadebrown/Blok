@@ -95,7 +95,7 @@ bool Client::frame() {
     ChunkID rendid = { floor(gfx.renderer->pos.x / CHUNK_SIZE_Z), floor(gfx.renderer->pos.z / CHUNK_SIZE_Z) };
 
     // view distance in chunks
-    int N = 16;
+    int N = 5;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
@@ -118,7 +118,7 @@ bool Client::frame() {
 
     Render::Mesh* suz = Render::Mesh::loadConst("../resources/suzanne.obj");
 
-    gfx.renderer->renderMesh(suz, glm::translate(vec3(0, 100, 0)));
+    gfx.renderer->renderMesh(suz, glm::translate(vec3(16, 40, 16)) * glm::scale(vec3(10.0)));
 
 
     // tell it we are done

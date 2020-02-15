@@ -25,6 +25,13 @@
 namespace Blok {
 
 
+/* consants */
+
+
+// global freetype library
+FT_Library ftlib;
+
+/* oeprator overloads */
 
 bool operator<(ChunkID A, ChunkID B) {
     if (A.X == B.X) return A.Z > B.Z;
@@ -219,6 +226,13 @@ bool initAll() {
 
     // do some error checks
     if (check_GL()) return false;
+
+
+    if (FT_Init_FreeType(&ftlib)) {
+        blok_error("Failed to initialize FreeType!");
+        return false;
+    }
+
     
     // output some information
     blok_info("Blok initialized successfully!");
@@ -356,7 +370,7 @@ int main(int argc, char** argv) {
     if (!initAll()) return -1;
 
     // create a local server
-    Server* server = new LocalServer();
+    LocalServer* server = new LocalServer();
 
     Client* client = new Client(server, 1280, 800);
 
@@ -368,10 +382,10 @@ int main(int argc, char** argv) {
     int n = 0;
     double ltime = getTime();
 
-    float speed = 100.0f;
+    float speed = 40.0f;
     client->gfx.renderer->pos = vec3(8, 40, 8);
 
-    do {
+    while (client->frame()) {
         
         vec3 moveZ = client->gfx.renderer->forward;
         moveZ = normalize(moveZ);
@@ -379,6 +393,8 @@ int main(int argc, char** argv) {
         vec3 moveX = glm::cross(client->gfx.renderer->up, client->gfx.renderer->forward);
         moveX.y = 0;
         moveX = normalize(moveX);
+
+        vec3 moveY = vec3(0, 0.8, 0);
 
         double ctime = getTime();
         double dt = ctime - ltime;
@@ -397,21 +413,28 @@ int main(int argc, char** argv) {
             client->gfx.renderer->pos -= speed * (float)dt * moveX;
         }
 
+        if (client->input.keys[GLFW_KEY_SPACE]) {
+            client->gfx.renderer->pos += speed * (float)dt * moveY;
+        }
+
+        if (client->input.keys[GLFW_KEY_LEFT_SHIFT]) {
+            client->gfx.renderer->pos -= speed * (float)dt * moveY;
+        }
 
 
         //client->renderer->pos += vec3(0.1, 0.0, 0.0);
-        client->yaw += dt * 0.4f * client->input.mouseDelta.x;
-        client->pitch += dt * 0.4f * client->input.mouseDelta.y;
+        client->yaw += dt * 0.3f * client->input.mouseDelta.x;
+        client->pitch += dt * 0.3f * client->input.mouseDelta.y;
 
         //client->renderer->forward = glm::rotate((float)dt * 0.4f * -client->mouseDelta.x, vec3(0, 1, 0)) * vec4(client->renderer->forward, 0);
         //client->renderer->forward = glm::rotate((float)dt * 0.4f * client->mouseDelta.y, vec3(0, 0, 1)) * vec4(client->renderer->forward, 0);
 
         if (client->N_frames % 100 == 0) {
-
-            printf("fps: %lf\n", 1 / dt);
+//            printf("fps: %lf\n", 1 / dt);
+            blok_debug("fps: %.1lf, chunks/sec: %.1lf", 1.0 / dt, server->stats.n_chunks / server->stats.t_chunks);
         }
 
-    } while (client->frame());
+    } 
 
 
     return 0;

@@ -32,6 +32,12 @@
 /* GLFW (Window Library) */
 #include <GLFW/glfw3.h>
 
+
+/* freetype (FontLoading) */
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
+
 /* PortAudio (Audio Input/Output Library) */
 #include "portaudio.h"
 
@@ -40,7 +46,6 @@ bool operator<(const glm::ivec2 A, const glm::ivec2 B);
 
 
 namespace Blok {
-
 
     /* TYPE DEFINITIONS */
 
@@ -106,6 +111,13 @@ namespace Blok {
 
     // the total number of blocks in a chunk
     const int CHUNK_NUM_BLOCKS = CHUNK_SIZE_X * CHUNK_SIZE_Y * CHUNK_SIZE_Z;
+
+
+    /* SINGLETONS */
+
+    // this is the global FreeType library we use for loading fonts.
+    // initialization is in Blok.cc
+    extern FT_Library ftlib;
 
 
     /* GAME ENGINE SPECIFIC TYPE DEFS */

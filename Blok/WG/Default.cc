@@ -10,16 +10,16 @@ namespace Blok::WG {
 DefaultWG::DefaultWG(uint32_t seed) {
     this->seed = seed;
 
-    // create a muxer
+    // create a muxer, to mix layers
     pmgen = Random::PerlinMux();
 
     // add a basic layer
     pmgen.addLayer(Random::Perlin(seed++, vec3(0.002), vec2(0.3, 0.65), vec2(30, 80)));
     pmgen.addLayer(Random::Perlin(seed++, vec3(0.02), vec2(0.2, 0.9), vec2(0, 20)));
-    pmgen.addLayer(Random::Perlin(seed++, vec3(0.002, .03, 0.0), vec2(0.7, 0.72), vec2(0, -40)));
+    pmgen.addLayer(Random::Perlin(seed++, vec3(0.007, .03, 0.0), vec2(0.7, 0.73), vec2(0, -40)));
 
     cavegen = Random::PerlinMux();
-    //cavegen.addLayer(Random::Perlin(seed++, vec3(0.03, 0.09, 0.03)));
+    cavegen.addLayer(Random::Perlin(seed++, vec3(0.03, 0.09, 0.03), vec2(.6, .7), vec2(0.0, 1.0)));
 
 }
 
@@ -42,7 +42,7 @@ Chunk* DefaultWG::getChunk(ChunkID id) {
             int stone_h = pmgen.noise2d(id.X * CHUNK_SIZE_X + x, id.Z * CHUNK_SIZE_Z + z);
             if (stone_h < 3) stone_h = 3;
 
-            int dirt_h = stone_h + 2;
+            int dirt_h = stone_h + 4;
 
             // just set the stone data
             for (y = 0; y < stone_h; ++y) {
@@ -60,15 +60,15 @@ Chunk* DefaultWG::getChunk(ChunkID id) {
             //while (y++ < CHUNK_HEIGHT) res->set(x, y, z, BlockInfo(ID::NONE));
         }
     }
-    // now, do cave pass
-
-
+    // now, do cave pass, deleting blocks out
     for (x = 0; x < CHUNK_SIZE_X; ++x) {
         for (z = 0; z < CHUNK_SIZE_Z; ++z) {
 
-            for (y = 10; y < 50; ++y) {
+            for (y = 1; y < 100; ++y) {
                 double smp = cavegen.noise3d(id.X * CHUNK_SIZE_X + x, y, id.Z * CHUNK_SIZE_Z + z);
-                if (smp > 0.6) {
+                double ff = (y - 30) / 30.0;
+                double thresh = 0.75 + 0.2 * ff * ff;
+                if (smp > thresh) {
                     // clear it out
                     res->set(x, y, z, BlockData(ID::AIR));
                 }
@@ -76,12 +76,7 @@ Chunk* DefaultWG::getChunk(ChunkID id) {
         }
     }
 
-
-
-
     return res;
-
-
 }
 
 

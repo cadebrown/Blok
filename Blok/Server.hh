@@ -36,18 +36,44 @@ namespace Blok {
     class LocalServer : public Server {
         public:
 
-        // how to generate the world
+        // a structure describing statistics of performance
+        struct {
+
+            // the number of chunks generated
+            int n_chunks;
+
+            // the total time spent generating chunks
+            double t_chunks;
+
+        } stats;
+
+        // the world generator for generating chunks
         WG::WG* worldGen;
 
         // construct a new server
         LocalServer() {
             worldGen = new WG::DefaultWG(0);
+
+            // initialize statistics
+            stats.n_chunks = 0;
+            stats.t_chunks = 0.0;
         }
         
+        // get a chunk from the server
         Chunk* getChunk(ChunkID id) {
             if (loaded.find(id) == loaded.end()) {
                 // the chunk was not found in the loaded chunks, so generate it now
-                return loaded[id] = worldGen->getChunk(id);
+                double stime = getTime();
+                Chunk* new_chunk = worldGen->getChunk(id);
+                stime = getTime() - stime;
+                if (new_chunk == NULL) {
+                    blok_warn("Error generating chunk <%d,%d>", id.X, id.Z);
+                    return NULL;
+                } else {
+                    stats.n_chunks++;
+                    stats.t_chunks += stime;
+                    return loaded[id] = new_chunk;
+                }
             } else {
                 return loaded[id];
             }

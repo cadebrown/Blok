@@ -18,9 +18,9 @@ void main() {
 
     /*vec4 sm = texture(texSrc, fUV) - 1.0 * 
         (texture(texSrc, fUV + px)+texture(texSrc, fUV + px+py)+texture(texSrc, fUV + py)+texture(texSrc, fUV - px + py)+texture(texSrc, fUV - px)+texture(texSrc, fUV - px - py)+texture(texSrc, fUV - py)+texture(texSrc, fUV + px - py))/8;
-    gColor = 100 * sm;*/
+    gColor = 10 * sm;*/
     //gColor = sm;
-    //gColor = texture(texSrc, fUV + vec2(.01 * sin(30.0 * fUV.y + .3 * time), .01 * sin(30.0 * fUV.x + .12 * time)));
+    //gColor = texture(texSrc, fUV + vec2(.01 * sin(30.0 * fUV.y + 1.2 * time), .01 * sin(30.0 * fUV.x + .8 * time)));
     gColor = texture(texSrc, fUV);
     //gColor = texture(texSrc, fUV/2) + texture(texSrc, fUV/2 + px);
     //gColor = texture(texSrc, fUV) + texture(texSrc, fUV + vec2(.01, .01));

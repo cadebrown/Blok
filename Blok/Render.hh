@@ -80,6 +80,76 @@ namespace Blok::Render {
 
     };
 
+
+    // FontTexture - create an asbtraction for a font-atlas
+    class FontTexture {
+        public:
+
+        static Map<String, FontTexture*> cache;    
+    
+        // load a constant, shared reference of the texture
+        // NOTE: the caller should NOT free this texture, and it should also not
+        //   modify any pixels
+        static FontTexture* loadConst(const String& path);
+
+
+
+        /* MEMBER VARS */
+
+        // the name of the font
+        String fontName;
+
+        // the size of the image, in pixels
+        int width, height;
+
+        // array of pixels, in row major order
+        pixel* pixels;
+
+        // the OpenGL handle for the texture object
+        uint glTex;
+
+        // the FreeType handle for the face object
+        FT_Face ftFace;
+
+        // list of start, stop positions for given characters in the main texture
+        Map<char, Pair<vec2i, vec2i> > charXYs;
+
+        // UVs for given character codes
+        Map<char, Pair<vec2, vec2> > charUVs;
+
+        // add a character to the bitmap,
+        //   which will modify the 'charUVs' map
+        void addChar(char c);
+
+
+        // constructs a texture from a given path
+        // don't use this constructor, please use Texture::loadCopy if you need your own copy
+        //   of the texture, or Texture::loadConst if you will not be modifying the texture
+        FontTexture(const String& path);
+
+        // deconstruct a texture, freeing its resources
+        ~FontTexture();
+
+        // return the index into the linear array 'pixels', given a row and column from the 
+        //   top left of the image
+        int getIndex(int row=0, int col=0) const {
+            return width * row + col;
+        }
+
+        // get the pixel at the indicated coordinates
+        pixel get(int row, int col) const {
+            int idx = getIndex(row, col);
+            return pixels[idx];
+        }
+
+        // set the pixel at the given location to a value, defaulting to black
+        void set(int row, int col, pixel pix=pixel(0, 0, 0, 0)) {
+            int idx = getIndex(row, col);
+            pixels[idx] = pix;
+        }
+
+    };
+
     /* MESH/GEOMETRY */
 
     // Face - a collection of 3 indices into a vertex array, describing a triangular
@@ -248,6 +318,10 @@ namespace Blok::Render {
         // various shaders
         Map<String, Shader*> shaders;
 
+        // the main font
+        FontTexture* mainFont;
+
+
         // the default background color
         vec3 clearColor;
 
@@ -278,6 +352,11 @@ namespace Blok::Render {
             // all requested chunks that need to be rendered
             Map<ChunkID, Chunk*> chunks;
 
+
+            // the list of misc. meshes to render
+            // See here: https://computergraphics.stackexchange.com/questions/37/what-is-the-cost-of-changing-state/46#46
+            Map<Mesh*, List<mat4> > meshes;
+
         } queue;
 
         // construct a new Renderer
@@ -298,6 +377,8 @@ namespace Blok::Render {
 
             // add a nice default color
             clearColor = vec3(0.1f, 0.1f, 0.1f);
+
+            mainFont = FontTexture::loadConst("../resources/FORCED_SQUARE.ttf");
 
             // construct our geometry pass
             targets["geometry"] = new Target(width, height, 4);
@@ -326,6 +407,7 @@ namespace Blok::Render {
             //glBindBuffer(GL_ARRAY_BUFFER, 0); 
 
         }
+
 
         // deconstruct the renderer
         ~Renderer() {

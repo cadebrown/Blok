@@ -9,6 +9,7 @@ LIB_GLFW=./libs/glfw-*.tar.gz
 LIB_ASSIMP=./libs/assimp-*.tar.gz
 LIB_PORTAUDIO=./libs/pa_*.tar.gz
 LIB_ARCHIVE=./libs/libarchive-*.tar.gz
+LIB_FREETYPE=./libs/freetype-*.tar.gz
 
 mkdir -p $BUILD_DIR
 
@@ -16,11 +17,13 @@ tar xf $LIB_GLFW -C $BUILD_DIR
 tar xf $LIB_ASSIMP -C $BUILD_DIR 
 tar xf $LIB_PORTAUDIO -C $BUILD_DIR
 tar xf $LIB_ARCHIVE -C $BUILD_DIR
+tar xf $LIB_FREETYPE -C $BUILD_DIR
 
 GLFW_DIR=$PWD/build/glfw-*
 ASSIMP_DIR=$PWD/build/assimp-*
 PORTAUDIO_DIR=$PWD/build/portaudio*
 ARCHIVE_DIR=$PWD/build/libarchive-*
+FREETYPE_DIR=$PWD/build/freetype-*
 
 # build glfw
 cd $GLFW_DIR
@@ -28,7 +31,6 @@ cmake . -DBUILD_SHARED_LIBS=OFF -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF
 make -j$JOBS
 GLFW_SLIB=$PWD/src/libglfw3.a
 strip --strip-debug $GLFW_SLIB
-
 
 # build assimp
 cd $ASSIMP_DIR
@@ -51,8 +53,17 @@ ARCHIVE_SLIB=$PWD/.libs/libarchive.a
 strip --strip-debug $ARCHIVE_SLIB
 
 
+cd $FREETYPE_DIR
+# configure without external requirements
+./configure --with-png=no --with-zlib=no --with-harfbuzz=no 
+make -j$JOBS
+FREETYPE_SLIB=$PWD/objs/.libs/libfreetype.a
+strip --strip-debug $FREETYPE_SLIB
+
+
 echo "built static glfw3: $GLFW_SLIB"
 echo "built static assimp: $ASSIMP_SLIB"
 echo "built static portaudio: $PORTAUDIO_SLIB"
 echo "built static libarchive: $ARCHIVE_SLIB"
+echo "built static freetype: $FREETYPE_SLIB"
 
