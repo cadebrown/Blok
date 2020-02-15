@@ -159,7 +159,7 @@ bool Client::frame() {
     }
 
 
-    Render::Mesh* suz = Render::Mesh::loadConst("../resources/suzanne.obj");
+    Render::Mesh* suz = Render::Mesh::loadConst("assets/obj/Suzanne.obj");
 
     gfx.renderer->renderMesh(suz, glm::translate(vec3(16, 40, 16)) * glm::scale(vec3(10.0)));
 
@@ -226,8 +226,10 @@ void Client::setFullscreen(bool toFullscreen) {
         glfwGetWindowPos(gfx.window, &gfx.windowPos[0], &gfx.windowPos[1] );
         glfwGetWindowSize(gfx.window, &gfx.windowSize[0], &gfx.windowSize[1] );
 
+        gfx.monitor = glfwGetPrimaryMonitor();
+
         // get resolution of monitor
-        const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+        const GLFWvidmode * mode = glfwGetVideoMode(gfx.monitor);
 
         // switch to full screen
         glfwSetWindowMonitor(gfx.window, gfx.monitor, 0, 0, mode->width, mode->height, 0 );
@@ -235,7 +237,8 @@ void Client::setFullscreen(bool toFullscreen) {
 
     } else {
         // else we are coming from full screen, so restore window state
-
+        gfx.monitor = NULL;
+        
         glfwSetWindowMonitor(gfx.window, NULL, gfx.windowPos[0], gfx.windowPos[1], gfx.windowSize[0], gfx.windowSize[1], 0);
     }
 
