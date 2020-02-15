@@ -71,6 +71,9 @@ namespace Blok {
         // the current delta time per frame of the client
         double dt;
 
+        // the last time (internal use)
+        double lastTime;
+
         // number of frames that have been computed thus far
         int N_frames;
 

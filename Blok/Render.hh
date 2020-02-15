@@ -32,12 +32,12 @@ namespace Blok::Render {
         // load a new copy of the texture
         // NOTE: the caller is responsible for deleting the texture after it is done
         //         , but it is allowed to modify the _pixels
-        static Texture* loadCopy(const String& path);
+        static Texture* loadCopy(const String& fname);
 
         // load a constant, shared reference of the texture
         // NOTE: the caller should NOT free this texture, and it should also not
         //   modify any pixels
-        static Texture* loadConst(const String& path);
+        static Texture* loadConst(const String& fname);
 
 
         /* MEMBER VARS */
@@ -52,10 +52,10 @@ namespace Blok::Render {
         uint glTex;
 
 
-        // constructs a texture from a given path
+        // constructs a texture from a given image file
         // don't use this constructor, please use Texture::loadCopy if you need your own copy
         //   of the texture, or Texture::loadConst if you will not be modifying the texture
-        Texture(const String& path);
+        Texture(const String& fname);
 
         // deconstruct a texture, freeing its resources
         ~Texture();
@@ -135,7 +135,7 @@ namespace Blok::Render {
         // constructs a texture from a given path
         // don't use this constructor, please use Texture::loadCopy if you need your own copy
         //   of the texture, or Texture::loadConst if you will not be modifying the texture
-        FontTexture(const String& path);
+        FontTexture(const String& fname);
 
         // deconstruct a texture, freeing its resources
         ~FontTexture();
@@ -232,7 +232,7 @@ namespace Blok::Render {
         
         // return the constant screen space quad for opengl
         static Mesh* getConstSSQ() {
-            return loadConst("../resources/ssq.obj");
+            return loadConst("resources/ssq.obj");
         }
 
         // OpenGL handles to the Vertex Array Object, Vertex Buffer Object, and EBO
@@ -362,13 +362,8 @@ namespace Blok::Render {
         // the main font
         FontTexture* mainFont;
 
-
         // the default background color
         vec3 clearColor;
-
-        // the vertex buffer object for the block
-        uint glBlockVBO;
-        uint glIDVBO;
 
         // the field of view, in degrees
         float FOV;
@@ -453,15 +448,15 @@ namespace Blok::Render {
 
             //mainFont = FontTexture::loadConst("../resources/FORCED_SQUARE.ttf");
             //mainFont = FontTexture::loadConst("../resources/VCR_MONO.ttf");
-            mainFont = FontTexture::loadConst("../resources/UbuntuMonoPowerline.ttf");
+            mainFont = FontTexture::loadConst("assets/fonts/UbuntuMonoPowerline.ttf");
 
             // construct our geometry pass
             targets["geometry"] = new Target(width, height, 4);
             targets["ssq"] = new Target(width, height, 1);
 
             // construct the main geometry pass
-            //shaders["geometry"] = Shader::get("resources/geom.vs", "resources/geom.fs");
-            shaders["geometry"] = Shader::load("resources/pmgeom.vs", "resources/pmgeom.fs");
+            shaders["geometry"] = Shader::load("assets/shaders/GEOM_ChunkBlockVBO.vert", "assets/shaders/GEOM_ChunkBlockVBO.frag");
+
             shaders["geom_mesh"] = Shader::load("resources/geom.vs", "resources/geom.fs");
             shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
             shaders["textquad"] = Shader::load("resources/textquad.vs", "resources/textquad.fs");
@@ -474,10 +469,8 @@ namespace Blok::Render {
             }, {
                 {0, 1, 2}
             });*/
-            mymesh = Mesh::loadConst("../resources/DefaultCube.obj");
+            mymesh = Mesh::loadConst("assets/obj/UnitCube.obj");
 
-            glGenBuffers(1, &glBlockVBO);
-            glGenBuffers(1, &glIDVBO);
             //glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
             //glBufferData(GL_ARRAY_BUFFER, sizeof(mat4), &translations[0], GL_STATIC_DRAW);
             //glBindBuffer(GL_ARRAY_BUFFER, 0); 

@@ -27,15 +27,33 @@ Texture* Texture::loadConst(const String& path) {
 }
 
 
-// read a texture from a given path
-Texture::Texture(const String& path) {
+// read a texture from an image file
+Texture::Texture(const String& fname) {
     int _w, _h, _channels;
-    pixels = (pixel *)stbi_load(path.c_str(), &_w, &_h, &_channels, 4); 
-    width = _w, height = _h;
-    if (pixels == NULL) {
-        blok_error("Failed to read image file '%s'", path.c_str());
+
+    bool found = false;
+    for (const String& path : paths) {
+
+        String newpath = path + "/" + fname;
+
+        pixels = (pixel *)stbi_load(newpath.c_str(), &_w, &_h, &_channels, 4); 
+        width = _w, height = _h;
+        if (pixels == NULL) {
+            blok_trace("Failed to load Texture '%s'", newpath.c_str());
+            continue;
+        }
+
+        found = true;
+        blok_trace("Loaded Texture '%s'", newpath.c_str());
+        break;
+    }
+
+
+    if (!found) {
+        blok_error("Failed to load Texture '%s'", fname.c_str());
         return;
     }
+
     glGenTextures(1, &glTex);
     glBindTexture(GL_TEXTURE_2D, glTex);
 
@@ -57,8 +75,6 @@ Texture::Texture(const String& path) {
     glGenerateMipmap(GL_TEXTURE_2D); 
 
     check_GL();
-
-    blok_debug("Loaded texture '%s'", path.c_str());
 }
 
 

@@ -85,6 +85,8 @@ Client::Client(Server* server, int w, int h) {
     // initialize history things/state
     N_frames = 0;
 
+    lastTime = getTime();
+
     yaw = 0.0f;
     pitch = 0.0f;
 
@@ -194,10 +196,15 @@ bool Client::frame() {
     // check any opengl errors
     check_GL();
 
+    double ctime = getTime();
+    dt = ctime - lastTime;
+    lastTime = ctime;
+
     // see if the app should close or not
     if (glfwWindowShouldClose(gfx.window)) {
         return false;
     }
+
 
     return true;
 

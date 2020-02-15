@@ -127,27 +127,45 @@ void FontTexture::addChar(char c) {
 
 
 // read a texture from a given path
-FontTexture::FontTexture(const String& path) {
+FontTexture::FontTexture(const String& fname) {
 
     width = 1024;
     height = 1024;
 
-    fontName = path;
+    fontName = fname;
 
     pixels = (pixel*)malloc(sizeof(*pixels) * width * height);
     if (pixels == NULL) {
-        blok_error("Internal malloc() error", path.c_str());
+        blok_error("Internal malloc() error");
         return;
     }
 
     // first, zero out the memory
     for (int i = 0; i < width * height; ++i) pixels[i] = pixel(0);
 
-    // try constructing a FreeType font-face from the given face
-    if (FT_New_Face(ftlib, path.c_str(), 0, &ftFace)) {
-        blok_error("Failed to load FreeType font '%s'!", path.c_str());
+    bool found = false;
+
+    for (const String& path : paths) {
+        // try and construct it
+        String newpath = path + "/" + fname;
+
+        // try constructing a FreeType font-face from the given face
+        if (FT_New_Face(ftlib, newpath.c_str(), 0, &ftFace)) {
+            blok_debug("Failed to load FontTexture font '%s'", newpath.c_str());
+            continue;
+        }
+
+        blok_debug("Loaded FontTexture '%s'", newpath.c_str());
+        found = true;
+        break;
+    }
+
+    if (!found) {
+        blok_error("Failed to load FontTexture '%s'", fname.c_str());
         return;
     }
+
+
 
     // font size in pixels
     int font_size = 48;
@@ -162,7 +180,6 @@ FontTexture::FontTexture(const String& path) {
         blok_error("Failed to set char size!");
         return;
     }
-
 
     // add standard characters
     //for (char c : "0123456789ab") {
@@ -191,7 +208,6 @@ FontTexture::FontTexture(const String& path) {
 
     check_GL();
 
-    blok_debug("Loaded font-texture '%s'", path.c_str());
 }
 
 

@@ -97,36 +97,37 @@ Mesh* Mesh::loadConst(const String& fname) {
         return cache[fname];
     } else {
 
-        // read file via ASSIMP
-        Assimp::Importer importer;
-        const aiScene* scene = importer.ReadFile(fname, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
-        // check for errors
-        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
-            blok_error("Failed to load model '%s' (err: %s)", fname.c_str(), importer.GetErrorString());
-            return NULL;
+        for (const String& path : paths) {
+
+            String newpath = path + "/" + fname;
+
+            // read file via ASSIMP
+            Assimp::Importer importer;
+            const aiScene* scene = importer.ReadFile(newpath, aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_CalcTangentSpace);
+            // check for errors
+            if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+                blok_trace("Failed to load Mesh '%s' (err: '%s')", newpath.c_str(), importer.GetErrorString());
+                continue;
+            }
+
+            // collect all the meshes
+            List<Mesh*> meshes;
+            processNode(meshes, scene->mRootNode, scene);
+
+            // delete all meshes except for the first one, because that's the one we'll use
+            for (uint i = 1; i < meshes.size(); ++i) {
+                delete meshes[i];
+            }
+
+            blok_trace("Loaded Mesh '%s'", newpath.c_str());
+
+            // return the first mesh found
+            return cache[fname] = meshes[0];
         }
-        // retrieve the directory path of the filepath
-        //directory = path.substr(0, path.find_last_of('/'));
 
-        //int mesh_idx = scene->mRootNode->mMeshes[0];
-        //printf("%i\n", mesh_idx);
-        //return processMesh(scene->mMeshes[mesh_idx], scene);
-
-        // process ASSIMP's root node recursively
-        //processNode(scene->mRootNode, scene);
-
-        List<Mesh*> meshes;
-        processNode(meshes, scene->mRootNode, scene);
-
-        // delete all meshes except for the first one, because that's the one we'll use
-        for (uint i = 1; i < meshes.size(); ++i) {
-            delete meshes[i];
-        }
-
-        blok_debug("Loaded model '%s'", fname.c_str());
-
-        // return the first mesh found
-        return cache[fname] = meshes[0];
+        // just error out
+        blok_error("Failed to load Mesh '%s'", fname.c_str());
+        return NULL;
     }
 
 }

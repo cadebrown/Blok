@@ -445,6 +445,7 @@ int main(int argc, char** argv) {
         stats.n_chunk_recalcs += client->gfx.renderer->stats.n_chunk_recalcs;
         stats.n_tris += client->gfx.renderer->stats.n_tris;
 
+
         if (client->N_frames % every == 0) {
             double et = getTime();
 
