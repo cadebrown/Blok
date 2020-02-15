@@ -372,18 +372,26 @@ int main(int argc, char** argv) {
     // create a local server
     LocalServer* server = new LocalServer();
 
-    Client* client = new Client(server, 1280, 800);
+    Client* client = new Client(server, 800, 600);
 
     blok_info("Initialized with: OpenGL: %s, GLSL: %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 
     // just update
     client->gfx.renderer->pos = vec3(0, 14, -10);
 
-    int n = 0;
-    double ltime = getTime();
-
     float speed = 40.0f;
     client->gfx.renderer->pos = vec3(8, 40, 8);
+
+
+    // create a statistics object
+    Render::Renderer::Stats stats;
+
+
+    // gathering statistics every so many frames
+    int every = 100;
+
+    // get time
+    double everyT = getTime();
 
     while (client->frame()) {
         
@@ -396,9 +404,8 @@ int main(int argc, char** argv) {
 
         vec3 moveY = vec3(0, 0.8, 0);
 
-        double ctime = getTime();
-        double dt = ctime - ltime;
-        ltime = ctime;
+        double dt = client->dt;
+        
         if (client->input.keys[GLFW_KEY_W]) {
             client->gfx.renderer->pos += speed * (float)dt * moveZ;
         }
@@ -421,6 +428,10 @@ int main(int argc, char** argv) {
             client->gfx.renderer->pos -= speed * (float)dt * moveY;
         }
 
+        if (client->input.keys[GLFW_KEY_F] && !client->input.lastKeys[GLFW_KEY_F]) {
+            client->setFullscreen(!client->getFullscreen());
+        }
+
 
         //client->renderer->pos += vec3(0.1, 0.0, 0.0);
         client->yaw += dt * 0.3f * client->input.mouseDelta.x;
@@ -429,9 +440,22 @@ int main(int argc, char** argv) {
         //client->renderer->forward = glm::rotate((float)dt * 0.4f * -client->mouseDelta.x, vec3(0, 1, 0)) * vec4(client->renderer->forward, 0);
         //client->renderer->forward = glm::rotate((float)dt * 0.4f * client->mouseDelta.y, vec3(0, 0, 1)) * vec4(client->renderer->forward, 0);
 
-        if (client->N_frames % 100 == 0) {
-//            printf("fps: %lf\n", 1 / dt);
-            blok_debug("fps: %.1lf, chunks/sec: %.1lf", 1.0 / dt, server->stats.n_chunks / server->stats.t_chunks);
+        stats.t_chunks += client->gfx.renderer->stats.t_chunks;
+        stats.n_chunks += client->gfx.renderer->stats.n_chunks;
+        stats.n_chunk_recalcs += client->gfx.renderer->stats.n_chunk_recalcs;
+        stats.n_tris += client->gfx.renderer->stats.n_tris;
+
+        if (client->N_frames % every == 0) {
+            double et = getTime();
+
+            double dt = et - everyT;
+            blok_debug("[frame%i] fps: %.1lf, kchunks/s: %.3lf, mtris/f: %.3lf", client->N_frames, every / dt, stats.n_chunk_recalcs / (1e3 * stats.t_chunks), stats.n_tris / (1e6 * every));
+
+            everyT = et;
+
+            // reset the statistics
+            stats = Render::Renderer::Stats();
+            //blok_debug("fps: %.1lf, chunks/sec: %.1lf", 1.0 / dt, server->stats.n_chunks / server->stats.t_chunks);
         }
 
     } 

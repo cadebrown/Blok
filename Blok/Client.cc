@@ -15,19 +15,50 @@ static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int act
     }
 }
 
+// callback to be called when the window is resized, so we can resize everything
+static void glfw_resize_callback(GLFWwindow* window, int w, int h) {
+    void* usr_ptr = glfwGetWindowUserPointer(window);
+    if (usr_ptr != NULL) {
+        // then we have a client object, so set the current key
+        Client* client = (Client*)usr_ptr;
+        blok_debug("resize to %ix%i", w, h);
+        client->gfx.renderer->resize(w, h);
+        //client->input.keys[key] = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
+        //printf("%d: %d\n", key, client->input.keys[key]);
+    }
+}
+
+
+// callback to be called when the window's framebuffer (i.e. output) is resized, so update
+//   the area openGL is rendering to
+static void glfw_fbresize_callback(GLFWwindow* window, int width, int height) {
+    glViewport(0, 0, width, height);
+}
+
+
 
 // construct a new client
 Client::Client(Server* server, int w, int h) {
     this->server = server;
+
+    // store the monitor
+    gfx.monitor = glfwGetPrimaryMonitor();
+
+    /*
+    const GLFWvidmode* mode = glfwGetVideoMode(gfx.monitor);
+    glfwWindowHint(GLFW_RED_BITS, mode->redBits);
+    glfwWindowHint(GLFW_GREEN_BITS, mode->greenBits);
+    glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
+    glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
+    */
+
     // create a window to render to
-    gfx.window = glfwCreateWindow(w, h, "Blok", nullptr, nullptr);
+    gfx.window = glfwCreateWindow(w, h, "Blok", NULL, NULL);
     if (!gfx.window) {
         blok_error("Failed to create GLFW Window!");
     }
 
-    // set it to focused
-    glfwMakeContextCurrent(gfx.window);
-    glfwSwapInterval(1); // 1 = vsync, 0 = as fast as possible
+    glfwGetWindowSize(gfx.window, &w, &h);
 
     // set it to focused
     glfwMakeContextCurrent(gfx.window);
@@ -38,10 +69,18 @@ Client::Client(Server* server, int w, int h) {
     // set the window user pointer to this class so we can get it later
     glfwSetWindowUserPointer(gfx.window, this);
 
-    // // set up input
+    // set up resizing call back
+    glfwSetWindowSizeCallback(gfx.window, glfw_resize_callback);
+    glfwSetFramebufferSizeCallback(gfx.window, glfw_fbresize_callback);
+
+    // set up input
     glfwSetKeyCallback(gfx.window, glfw_key_callback);
+
+
+
+    // raw mouse (i.e. no acceleration)
     if (glfwRawMouseMotionSupported()) glfwSetInputMode(gfx.window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
-    glfwSetInputMode(gfx.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    //glfwSetInputMode(gfx.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // initialize history things/state
     N_frames = 0;
@@ -69,33 +108,35 @@ Client::~Client() {
 // run a frame on the client
 bool Client::frame() {
 
+    // amount (in radians) the pitch has to be within
     const float pitch_slop = .1f;
-    // sanitize some input
+
+    // sanitize the input
     if (pitch > M_PI / 2 - pitch_slop) pitch = M_PI / 2 - pitch_slop;
     if (pitch < -M_PI / 2 + pitch_slop) pitch = -M_PI / 2 + pitch_slop;
-    //pitch = 0;
 
-    yaw = fmod(yaw, 2 * M_PI) + 2 * M_PI;
-    if (yaw >= 2 * M_PI) yaw -= 2 * M_PI;
+    // round yaw to between 0 and 2PI
+    yaw = fmod(yaw, 2 * M_PI);
+    if (yaw < 0.0) yaw += 2 * M_PI;
 
-    // use the internal renderer to update
-    //renderer->render();
-    
+    // always use this for up
     gfx.renderer->up = vec3(0, 1, 0);
-    //renderer->forward = vec3(0, 0, 1);
-    //renderer->up = (glm::rotate((float)(pitch - M_PI / 2), vec3(1, 0, 0)) * glm::rotate(yaw, vec3(0, 1, 0))) * vec4(0, 0, 1, 0);
+
+    // compute the forward direction (i.e. +Z axis), by first rotating (0,0,1) (+Z world coord) by pitch along the X axis,
+    //   then yaw around the Y axis
     gfx.renderer->forward = (glm::rotate(yaw, vec3(0, 1, 0)) * glm::rotate(pitch, vec3(1, 0, 0))) * vec4(0, 0, 1, 0);
 
+    // normalize it just to make sure
     gfx.renderer->forward = glm::normalize(gfx.renderer->forward);
 
-    // tell our renderer what to do
+    // tell the renderer to begin accepting render commands
     gfx.renderer->render_start();
-    //glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
-    ChunkID rendid = { floor(gfx.renderer->pos.x / CHUNK_SIZE_Z), floor(gfx.renderer->pos.z / CHUNK_SIZE_Z) };
+    // get the current
+    ChunkID rendid = { (int)(floor(gfx.renderer->pos.x / CHUNK_SIZE_Z)), (int)(floor(gfx.renderer->pos.z / CHUNK_SIZE_Z)) };
 
     // view distance in chunks
-    int N = 5;
+    int N = 8;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
@@ -119,7 +160,6 @@ bool Client::frame() {
     Render::Mesh* suz = Render::Mesh::loadConst("../resources/suzanne.obj");
 
     gfx.renderer->renderMesh(suz, glm::translate(vec3(16, 40, 16)) * glm::scale(vec3(10.0)));
-
 
     // tell it we are done
     gfx.renderer->render_end();
@@ -162,6 +202,39 @@ bool Client::frame() {
     return true;
 
 }
+
+bool Client::getFullscreen() {
+    // the window is full screen if it has a dedicated monitor
+    return glfwGetWindowMonitor(gfx.window) != NULL;
+}
+
+void Client::setFullscreen(bool toFullscreen) {
+    // do nothing
+    if (toFullscreen == getFullscreen()) return;
+
+    if (toFullscreen) {
+        // make it full screen
+
+        // first, save size & position so we can restore
+        glfwGetWindowPos(gfx.window, &gfx.windowPos[0], &gfx.windowPos[1] );
+        glfwGetWindowSize(gfx.window, &gfx.windowSize[0], &gfx.windowSize[1] );
+
+        // get resolution of monitor
+        const GLFWvidmode * mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+        // switch to full screen
+        glfwSetWindowMonitor(gfx.window, gfx.monitor, 0, 0, mode->width, mode->height, 0 );
+
+
+    } else {
+        // else we are coming from full screen, so restore window state
+
+        glfwSetWindowMonitor(gfx.window, NULL, gfx.windowPos[0], gfx.windowPos[1], gfx.windowSize[0], gfx.windowSize[1], 0);
+    }
+
+}
+
+
 
 
 };

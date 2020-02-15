@@ -2,18 +2,11 @@
 
 #include <Blok/Render.hh>
 
-#include <Blok/Random.hh>
-
-#include "./stb_image.h"
-
-
 namespace Blok::Render {
     
 Map<String, FontTexture*> FontTexture::cache;    
 
-
-// load a new copy of the texture
-// load a constant copy of the texture
+// load a constant copy of the font texture
 FontTexture* FontTexture::loadConst(const String& path) {
     if (cache.find(path) == cache.end()) {
         return cache[path] = new FontTexture(path);
@@ -24,15 +17,13 @@ FontTexture* FontTexture::loadConst(const String& path) {
 }
 
 void FontTexture::addChar(char c) {
-
-    if (charXYs.find(c) != charXYs.end()) {
+    if (charInfos.find(c) != charInfos.end()) {
         // it has already been added, so stop
         return;
     }
 
     // get the current slot of the glyph
     FT_GlyphSlot slot = ftFace->glyph;
-    FT_UInt glyph_index;
 
     // ensure we can load the given character as a bitmap
     if (FT_Load_Char(ftFace, c, FT_LOAD_RENDER)) {
@@ -43,32 +34,103 @@ void FontTexture::addChar(char c) {
     // keep a reference to the bitmap
     FT_Bitmap* bitmap = &slot->bitmap;
 
+    // output size
+    int o_sx = bitmap->width, o_sy = bitmap->rows;
+
     // output x, y coords
     int o_px = 0, o_py = 0;
+
+    if (charInfos.size() != 0) {
+        
+        // candidate position to start placing at
+        vec2i cand{0, 0};
+
+
+        // keep a variable for when we are done
+        // it is set to false if there were any changes, so it goes through until there were no changes
+        bool isRefined = false;
+
+        // only try so many times, just in case
+        int maxTries = 10000;
+        int ct = 0;
+
+        // a hueristic row alignment value
+        int align = 64;
+
+        while (!isRefined && ct < maxTries) {
+            isRefined = true;
+
+
+            int maxy = 0;
+
+            for (auto& entry : charInfos) {
+                // iterate through map of all of the allocated space
+                Pair<vec2i, vec2i> pos{entry.second.texStart, entry.second.texStop};
+
+                if (pos.second.y > maxy) maxy = pos.second.y;
+
+                // check if we are intersecting the previous bounding box
+                bool overX = (cand.x >= pos.first.x && cand.x < pos.second.x) ||
+                    (cand.x + o_sx >= pos.first.x && cand.x + o_sx < pos.second.x);
+                bool overY = (cand.y >= pos.first.y && cand.y < pos.second.y) ||
+                            (cand.y + o_sy >= pos.first.y && cand.y + o_sy < pos.second.y);
+
+                // check for overlap
+                if (overX && overY) {
+                    cand.x = pos.second.x;
+                    isRefined = false;
+                }
+
+                if (cand.x + o_sx >= width) {
+                    // overflow to next line
+                    cand.x = 0;
+                    cand.y = pos.second.y;
+                    // add alignment to simulate rows
+                    // I've noticed this results in more tighly packed maps most of the time,
+                    // with the ability to still allocate space in most cases
+                    cand.y += align - ((cand.y) % align);
+                    isRefined = false;
+                }
+            }
+            ct++;
+        }
+
+        //    if (cand.x >= charXYs)
+        o_px = cand.x;
+        o_py = cand.y;
+
+    }
+
+    // otherwise, just use 0, 0 as the starting point
+
+    if (o_py + o_sy >= height || o_px + o_sx >= width) {
+        // out of range, cannot add
+        blok_warn("Failed to allocate space in the font texture for char '%c' from font '%s'", c, fontName.c_str());
+        return;
+    }
+
 
     // for simplicity, we assume that `bitmap->pixel_mode'
     // is `FT_PIXEL_MODE_GRAY' (i.e., not a bitmap font)
 
     // iterate through the bitmap for this character
-    for (int py = 0; py < bitmap->rows; ++py) {
-        for (int px = 0; px < bitmap->width; ++px) {
-            pixel cur = pixel(bitmap->buffer[py * bitmap->width + px]);
+    for (uint py = 0; py < bitmap->rows; ++py) {
+        for (uint px = 0; px < bitmap->width; ++px) {
+            pixel cur = pixel(bitmap->buffer[(bitmap->rows - py - 1) * bitmap->width + px]);
             pixels[(o_py + py) * width + (o_px + px)] = cur;
         }
     }
 
     // now, add the coordinates to the map
-    charXYs[c] = { vec2i(o_px, o_py), vec2i(o_px + bitmap->width, o_py + bitmap->rows) };
-
+    charInfos[c] = { vec2i(o_px, o_py), vec2i(o_px + o_sx, o_py + o_sy), vec2i(slot->bitmap_left, slot->bitmap_top), (int)slot->advance.x };
 }
-
 
 
 // read a texture from a given path
 FontTexture::FontTexture(const String& path) {
 
-    width = 64;
-    height = 64;
+    width = 1024;
+    height = 1024;
 
     fontName = path;
 
@@ -88,10 +150,10 @@ FontTexture::FontTexture(const String& path) {
     }
 
     // font size in pixels
-    int font_size = 32;
+    int font_size = 48;
 
     // dpi resolution
-    int font_dpi = 160;
+    int font_dpi = 200;
 
     // set the font size
     // the '0's mean that they are calculated by the font face,
@@ -102,54 +164,30 @@ FontTexture::FontTexture(const String& path) {
     }
 
 
-    // add a character
-    addChar('C');
-   // addChar('A');
-
-
-    /*for ( n = 0; n < num_chars; n++ )
-    {
-
-    my_draw_bitmap( &slot->bitmap,
-                    pen_x + slot->bitmap_left,
-                    pen_y - slot->bitmap_top );
-    }*/
-/*
-    int px = 0, py = height-1;
-    char* t = bmp;
-    while (*t != '\0') {
-        if (*t == '\n') {
-            py--;
-            px = 0;
-        } else {
-            if (*t == '*') {
-                pixels[py * width + px] = pixel(255, 255, 255, 255);
-            }
-            px++;
-        }
-
-        t++;
+    // add standard characters
+    //for (char c : "0123456789ab") {
+    for (char c : "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ !@#$%^&*()_+`-=[]\\{}|;':\",./<>?") {
+    //for (char c : "F") {
+        addChar(c);
     }
-*/
 
     glGenTextures(1, &glTex);
     glBindTexture(GL_TEXTURE_2D, glTex);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);	
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
     /*
     GLfloat largest_supported_anisotropy; 
     glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &largest_supported_anisotropy); 
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, largest_supported_anisotropy);
 */
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
-    glGenerateMipmap(GL_TEXTURE_2D); 
+    //glGenerateMipmap(GL_TEXTURE_2D); 
 
     check_GL();
 

@@ -26,12 +26,22 @@ namespace Blok {
             // the output window we are rendering to
             GLFWwindow* window;
 
+            // the monitor (may be NULL)
+            GLFWmonitor* monitor;
+
             // whether or not it is currently focused, and whether or not it was last
             //   frame
             bool isFocused, wasFocused;
 
             // the main renderer object, responsible for the rendering
             Render::Renderer* renderer;
+
+
+            // the window position
+            vec2i windowPos{0, 0};
+
+            // the window size
+            vec2i windowSize{0, 0};
 
         } gfx;
 
@@ -82,6 +92,13 @@ namespace Blok {
 
         // delete a client. Does not free/affect the server
         ~Client();
+
+
+        // get whether or not the client is in full screen mode
+        bool getFullscreen();
+
+        // set full screen or not
+        void setFullscreen(bool toFullscreen=true);
 
         // run a single frame on the client, returning true if it should continue
         // false if it has quit

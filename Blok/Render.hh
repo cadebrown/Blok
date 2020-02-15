@@ -85,14 +85,13 @@ namespace Blok::Render {
     class FontTexture {
         public:
 
+        // cache of already existing fonts
         static Map<String, FontTexture*> cache;    
     
-        // load a constant, shared reference of the texture
+        // load a constant, shared reference of the font-texture
         // NOTE: the caller should NOT free this texture, and it should also not
         //   modify any pixels
         static FontTexture* loadConst(const String& path);
-
-
 
         /* MEMBER VARS */
 
@@ -111,16 +110,27 @@ namespace Blok::Render {
         // the FreeType handle for the face object
         FT_Face ftFace;
 
-        // list of start, stop positions for given characters in the main texture
-        Map<char, Pair<vec2i, vec2i> > charXYs;
 
-        // UVs for given character codes
-        Map<char, Pair<vec2, vec2> > charUVs;
+        // define a structure describing the character info in the font
+        struct CharInfo {
+            
+            // the start and stop in the texture atlas (glTex)
+            vec2i texStart, texStop;
+
+            // offset to top left of teh glitch
+            vec2i bearing;
+
+            // how far to advance after drawing the character
+            int advance;
+
+        };
+
+        // list of start, stop positions for given characters in the main texture
+        Map<char, CharInfo > charInfos;
 
         // add a character to the bitmap,
-        //   which will modify the 'charUVs' map
+        //   which will modify the 'charInfos' map
         void addChar(char c);
-
 
         // constructs a texture from a given path
         // don't use this constructor, please use Texture::loadCopy if you need your own copy
@@ -148,6 +158,34 @@ namespace Blok::Render {
             pixels[idx] = pix;
         }
 
+    };
+
+
+    // UIText - class to render 2D text on the screen 
+    class UIText {
+        public:
+
+        // what is the font to render
+        FontTexture* font;
+
+        // the VAO and VBO objects for the screen quads
+        uint glVAO, glVBO;
+
+        // current text being rendered
+        String text;
+
+        // the cache of previous values
+        struct {
+            
+            // the text that was last rendered
+            String lastText;
+
+        } cache;
+
+
+        // construct a UIText object from a given font
+        // NOTE: set the text after this to actually see something
+        UIText(FontTexture* font);
     };
 
     /* MESH/GEOMETRY */
@@ -297,6 +335,9 @@ namespace Blok::Render {
         // create a render target with a given width/height and optional number of textures
         Target(int width, int height, int numTex=1);
 
+        // resize a rendering target to a given size
+        void resize(int w, int h);
+
     };
 
 
@@ -357,7 +398,39 @@ namespace Blok::Render {
             // See here: https://computergraphics.stackexchange.com/questions/37/what-is-the-cost-of-changing-state/46#46
             Map<Mesh*, List<mat4> > meshes;
 
+
+            // list of textures to render
+            //Map<FontTexture*, List<> > texts;
+
         } queue;
+
+
+        // keep stats about rendering
+        struct Stats {
+            
+            // time spent processing chunks
+            double t_chunks;
+
+            // number of chunks processed
+            int n_chunks;
+
+            // number of chunk recalculations
+            int n_chunk_recalcs;
+
+
+            // number of triangles (total) send to OpenGL
+            int n_tris;
+
+            Stats() {
+                // reset all statistics by default
+                t_chunks = 0.0;
+                n_chunks = 0;
+                n_chunk_recalcs = 0;
+                n_tris = 0;
+            }
+
+
+        } stats;
 
         // construct a new Renderer
         Renderer(int width, int height) {
@@ -378,7 +451,9 @@ namespace Blok::Render {
             // add a nice default color
             clearColor = vec3(0.1f, 0.1f, 0.1f);
 
-            mainFont = FontTexture::loadConst("../resources/FORCED_SQUARE.ttf");
+            //mainFont = FontTexture::loadConst("../resources/FORCED_SQUARE.ttf");
+            //mainFont = FontTexture::loadConst("../resources/VCR_MONO.ttf");
+            mainFont = FontTexture::loadConst("../resources/UbuntuMonoPowerline.ttf");
 
             // construct our geometry pass
             targets["geometry"] = new Target(width, height, 4);
@@ -389,6 +464,7 @@ namespace Blok::Render {
             shaders["geometry"] = Shader::load("resources/pmgeom.vs", "resources/pmgeom.fs");
             shaders["geom_mesh"] = Shader::load("resources/geom.vs", "resources/geom.fs");
             shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
+            shaders["textquad"] = Shader::load("resources/textquad.vs", "resources/textquad.fs");
 
             // construct basic mesh
             /*mymesh = new Mesh({
@@ -405,7 +481,6 @@ namespace Blok::Render {
             //glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
             //glBufferData(GL_ARRAY_BUFFER, sizeof(mat4), &translations[0], GL_STATIC_DRAW);
             //glBindBuffer(GL_ARRAY_BUFFER, 0); 
-
         }
 
 
@@ -423,6 +498,8 @@ namespace Blok::Render {
             return targets["geometry"];
         }
 
+        // resize the rendering engine to a new output size
+        void resize(int w, int h);
 
         // begin the rendering sequence
         void render_start();
