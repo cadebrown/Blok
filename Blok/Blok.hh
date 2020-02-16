@@ -40,12 +40,12 @@
 
 /* PortAudio (Audio Input/Output Library) */
 #include "portaudio.h"
-
 // define this operator so that XZs can be used as keys
 bool operator<(const glm::ivec2 A, const glm::ivec2 B);
 
 
 namespace Blok {
+
 
     /* TYPE DEFINITIONS */
 
@@ -57,6 +57,21 @@ namespace Blok {
     using mat2 = glm::mat2;
     using mat3 = glm::mat3;
     using mat4 = glm::mat4;
+
+
+    // Ray - an object representing a position and direction towards
+    struct Ray {
+        
+        // the origin and direction of the ray
+        vec3 orig, dir;
+
+        // construct a ray given a position & direction
+        Ray(vec3 orig={0,0,0}, vec3 dir={0,0,0}) {
+            this->orig = orig;
+            this->dir = glm::normalize(dir);
+        }
+
+    };
 
 
     // popualte some types as vectors of integer coordinates (always append 'i' to these)
@@ -144,6 +159,29 @@ namespace Blok {
     };
 
 
+    // BlockProperties - static properties of all blocks of a given type
+    struct BlockProperties {
+        
+        // a map of all block properties
+        static Map<ID, BlockProperties*> all;
+        
+        // the Block ID that the properties are relevant to
+        ID id;
+
+        // the enum 'ID' value, as a string
+        String id_name;
+
+        // the human readable name
+        String name;
+
+        // construct a new block properties
+        BlockProperties(ID id) {
+            this->id = id;
+        }
+
+    };
+
+
     // BlockData - data for a single block in the world, which includes the type of
     //   block, as well as room for meta data
     struct BlockData {
@@ -177,8 +215,29 @@ namespace Blok {
     ChunkID operator+(ChunkID A, ChunkID B);
     ChunkID operator-(ChunkID A, ChunkID B);
 
+    static inline bool operator==(ChunkID A, ChunkID B) {
+        return A.X == B.X && A.Z == B.Z;
+    }
+    static inline bool operator!=(ChunkID A, ChunkID B) {
+        return A.X != B.X || A.Z != B.Z;
+    }
     // so that ChunkIDs are well ordered
     bool operator<(ChunkID A, ChunkID B);
+    
+    // misc functions
+
+
+    // return smallest 't' such that x+t*dx is an integer
+    static inline float intBound(float x, float dx) {
+        return (dx > 0 ? ceilf(x) - x : x - floorf(x)) / fabsf(dx);
+        /*if (dx < 0) {
+            return intBound(-x, -dx);
+        } else {
+            x = fmodf(x, 1);
+            return (1 - x) / dx;
+        }*/
+    }
+
 
     // Chunk - represents a vertical column of data of size:
     //   CHUNK_SIZE_X*CHUNK_SIZE_Y*CHUNK_SIZE_Z
@@ -253,8 +312,6 @@ namespace Blok {
 
 
             List< Pair<vec3, BlockData> > renderBlocks;
-
-
 
         } rcache;
 
@@ -348,6 +405,12 @@ namespace Blok {
             return res;
         }
 
+        // raycast just the current chunk, up to 'maxDist' from `ray.origin` All 'Ray' coordinates are in local space
+        // returns true if found, and if so, sets the 'to*' arguments to the data about the hit
+        // if it is not a hit, set `toLoc` to the end of the volume, where it stopped looking
+        // NOTE: `toLoc` is set in local chunk coordinates
+        bool raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, BlockData& toData);
+        
         // get the block data at a given local coordinate
         // i.e. 0 <= x < BLOCK_SIZE_X
         // i.e. 0 <= y < BLOCK_SIZE_Y

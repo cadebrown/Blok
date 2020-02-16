@@ -4,6 +4,8 @@
 
 namespace Blok {
 
+Client* dirtyClient = NULL;
+
 // callback to handle results from GLFW
 static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     void* usr_ptr = glfwGetWindowUserPointer(window);
@@ -14,6 +16,17 @@ static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int act
         //printf("%d: %d\n", key, client->input.keys[key]);
     }
 }
+
+// callback to handle results from GLFW
+static void glfw_mousebutton_callback(GLFWwindow* window, int key, int action, int mods) {
+    void* usr_ptr = glfwGetWindowUserPointer(window);
+    if (usr_ptr != NULL) {
+        // then we have a client object, so set the current mouse button
+        Client* client = (Client*)usr_ptr;
+        client->input.mouseButtons[key] = action == GLFW_PRESS || action == GLFW_REPEAT;
+    }
+}
+
 
 // callback to be called when the window is resized, so we can resize everything
 static void glfw_resize_callback(GLFWwindow* window, int w, int h) {
@@ -28,7 +41,6 @@ static void glfw_resize_callback(GLFWwindow* window, int w, int h) {
     }
 }
 
-
 // callback to be called when the window's framebuffer (i.e. output) is resized, so update
 //   the area openGL is rendering to
 static void glfw_fbresize_callback(GLFWwindow* window, int width, int height) {
@@ -39,6 +51,8 @@ static void glfw_fbresize_callback(GLFWwindow* window, int width, int height) {
 
 // construct a new client
 Client::Client(Server* server, int w, int h) {
+
+    dirtyClient = this;
     this->server = server;
 
     // store the monitor
@@ -75,8 +89,10 @@ Client::Client(Server* server, int w, int h) {
 
     // set up input
     glfwSetKeyCallback(gfx.window, glfw_key_callback);
+    glfwSetMouseButtonCallback(gfx.window, glfw_mousebutton_callback);
 
-
+    // hide the cursor
+    glfwSetInputMode(gfx.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // raw mouse (i.e. no acceleration)
     if (glfwRawMouseMotionSupported()) glfwSetInputMode(gfx.window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
@@ -86,6 +102,9 @@ Client::Client(Server* server, int w, int h) {
     N_frames = 0;
 
     lastTime = getTime();
+
+    dt = 0.01;
+    smoothFPS = 60.0;
 
     yaw = 0.0f;
     pitch = 0.0f;
@@ -99,6 +118,7 @@ Client::Client(Server* server, int w, int h) {
 
 // destroy a client
 Client::~Client() {
+    if (dirtyClient == this) dirtyClient = NULL;
     // this was constructed for the client
     delete gfx.renderer;
 
@@ -109,6 +129,9 @@ Client::~Client() {
 
 // run a frame on the client
 bool Client::frame() {
+    dirtyClient = this;
+
+    if (dt < .0001) dt = .0001;
 
     // amount (in radians) the pitch has to be within
     const float pitch_slop = .1f;
@@ -158,23 +181,59 @@ bool Client::frame() {
         }
     }
 
+    vec3 hittarget, hitNormal;
+    BlockData hitBlock{ID::AIR};
+    bool hit = server->raycast(Ray(gfx.renderer->pos, gfx.renderer->forward), 50.0f, hittarget, hitNormal, hitBlock);
 
-    Render::Mesh* suz = Render::Mesh::loadConst("assets/obj/Suzanne.obj");
+    if (!hit) {
+        hitBlock = {ID::AIR};
+        hittarget = {0, 0, 0};
+        hitNormal = {0, 0, 0};
+    } else {
 
-    gfx.renderer->renderMesh(suz, glm::translate(vec3(16, 40, 16)) * glm::scale(vec3(10.0)));
+        Render::Mesh* outline = Render::Mesh::loadConst("assets/obj/UnitCubeOutline.obj");
+        gfx.renderer->renderMesh(outline, glm::translate(hittarget));
+
+        if (input.mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
+            // place block
+
+            vec3 targetPos = hittarget + hitNormal;
+            Chunk* cur = server->getChunkIfLoaded(ChunkID(floorf(targetPos.x/16), floorf(targetPos.z/16)));
+            vec3 localPos = targetPos - vec3(cur->getWorldPos());
+
+            cur->set((int)localPos.x, (int)localPos.y, (int)localPos.z, {ID::STONE});
+
+        } else if (input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
+            // delete block
+            vec3 targetPos = hittarget;
+            Chunk* cur = server->getChunkIfLoaded(ChunkID(floorf(targetPos.x/16), floorf(targetPos.z/16)));
+            vec3 localPos = targetPos - vec3(cur->getWorldPos());
+
+            cur->set((int)localPos.x, (int)localPos.y, (int)localPos.z, {ID::AIR});
+        }
+
+    }
+
+    //Render::Mesh* sph = Render::Mesh::loadConst("assets/obj/Sphere.obj");
+
+    //gfx.renderer->renderMesh(sph, glm::translate(vec3(vec3i(hittarget)) + vec3(0.5, 0.5, 0.5)) * glm::scale(vec3(0.8)));
 
     static Render::UIText* uit = new Render::UIText(Render::FontTexture::loadConst("assets/fonts/ForcedSquare.ttf"));
-    static float displayFPS = 60.0;
-    // smooth it over time
-    displayFPS = (1 - dt) * displayFPS + dt * (1.0 / dt);
+    // smooth it out over time
+    smoothFPS = (1 - dt) * smoothFPS + 1;
+
     // info screen
     char tmp[2048];
-    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %.1f, %.1f, %.1f\nchunk: %+i,%+i\nfps: %.1lf", 
+    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %.1f, %.1f, %.1f\nchunk: %+i,%+i\nfps: %.1lf\nhit: %s\nlooking_at: %.1f,%.1f,%.1f\nlooking_nrm: %.1f,%.1f,%.1f", 
         BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
         gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
         rendid.X, rendid.Z,
-        displayFPS
+        smoothFPS,
+        BlockProperties::all[hitBlock.id]->name.c_str(),
+        hittarget.x, hittarget.y, hittarget.z,
+        hitNormal.x, hitNormal.y, hitNormal.z
     );
+
 
     uit->text = tmp;
     gfx.renderer->renderText({10, gfx.renderer->height-10}, uit);
@@ -185,7 +244,11 @@ bool Client::frame() {
     // clear input
     for (int i = 0; i < GLFW_KEY_LAST; ++i) {
         input.lastKeys[i] = input.keys[i];
-        //input.keys[i] = false;
+    }
+
+    // clear input
+    for (int i = 0; i < GLFW_MOUSE_BUTTON_LAST; ++i) {
+        input.lastMouseButtons[i] = input.mouseButtons[i];
     }
 
     // update the frame

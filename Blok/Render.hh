@@ -474,6 +474,7 @@ namespace Blok::Render {
             shaders["geom_mesh"] = Shader::load("resources/geom.vs", "resources/geom.fs");
             shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
             shaders["textquad"] = Shader::load("resources/textquad.vs", "resources/textquad.fs");
+            shaders["Reticle"] = Shader::load("assets/shaders/Reticle.vert", "assets/shaders/Reticle.frag");
 
             // construct basic mesh
             /*mymesh = new Mesh({

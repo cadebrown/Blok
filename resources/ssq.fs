@@ -33,9 +33,9 @@ void main() {
 
     //if (dep < 0.00001) dep = 1;
     dep = min(1, max(0, dep));
-    dep = (exp(2.0 * dep) - 1) / (exp(2.0) - 1);
+    //dep = (exp(4.0 * dep) - 1) / (exp(4.0) - 1);
 
-    dep = dep * 0.3;
+    dep = dep * 0.45;
     gColor = vec4(texture(texSrc, fUV)) * (1 - dep) + vec4(dep, dep, dep, 1.0);
     //gColor = texture(texSrc, fUV/2) + texture(texSrc, fUV/2 + px);
     //gColor = texture(texSrc, fUV) + texture(texSrc, fUV + vec2(.01, .01));

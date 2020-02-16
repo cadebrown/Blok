@@ -56,11 +56,17 @@ namespace Blok {
             // a lookup table to check if a key is currently being pressed down
             Map<int, bool> keys;
 
+            // a lookup table to check if a mouse button is currently being pressed down
+            Map<int, bool> mouseButtons;
+
 
             // LAST TIME CACHES
 
             // the last array of key values
             Map<int, bool> lastKeys;
+
+            // the last table of mouse buttons
+            Map<int, bool> lastMouseButtons;
 
             // the last XY position of the mouse
             vec2 lastMouse;
@@ -70,6 +76,9 @@ namespace Blok {
 
         // the current delta time per frame of the client
         double dt;
+
+        // a time-smoothed valud of FPS
+        double smoothFPS;
 
         // the last time (internal use)
         double lastTime;
@@ -110,6 +119,8 @@ namespace Blok {
 
     };
 
+    // the last updated client. Maybe NULL
+    extern Client* dirtyClient;
 
 }
 

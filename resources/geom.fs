@@ -14,6 +14,8 @@ layout (location = 3) out vec4 gNormal;
 
 uniform sampler2D texDiffuse;
 
+uniform vec4 col;
+
 void main() {
 
     // get the color
@@ -22,7 +24,7 @@ void main() {
     vec3 N = normalize(fTBN[2]);
     vec3 ldir = normalize(vec3(0, -1, 1));
 
-    gColor = vec4(0.0, 0.5, 0.5, 1.0);
+    gColor = col;
     gPosition = fPosition;
     gUV = vec4(fUV, 0.0f, 0.0f);
     gNormal = vec4(N, 0.0f);

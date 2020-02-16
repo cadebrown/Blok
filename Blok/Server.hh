@@ -29,6 +29,15 @@ namespace Blok {
         //   the actual chunk
         virtual Chunk* getChunk(ChunkID id) = 0;
 
+        // get a chunk from the server, if it is already loaded
+        // else, return NULL
+        virtual Chunk* getChunkIfLoaded(ChunkID id) = 0;
+
+        // raycast() should seek through all possible chunks, checking intersection along 'ray',
+        //   up to 'maxDist'. If it ends up hitting a solid block, return true and set all the 'to*'
+        //   arguments to the data about the hit
+        virtual bool raycast(Ray ray, float maxDist, vec3& toPos, vec3& toNormal, BlockData& toData) = 0;
+
     };
 
     // LocalServer - a server implementation that operates locally (i.e. on the current machine,
@@ -80,6 +89,20 @@ namespace Blok {
 
         }
 
+        // get a chunk from the server, if it is already loaded
+        // else, return NULL
+        Chunk* getChunkIfLoaded(ChunkID id) {
+            if (loaded.find(id) == loaded.end()) {
+                return NULL;
+            } else {
+                return loaded[id];
+            }
+        }
+
+        // raycast() should seek through all possible chunks, checking intersection along 'ray',
+        //   up to 'maxDist'. If it ends up hitting a solid block, return true and set all the 'to*'
+        //   arguments to the data about the hit
+        bool raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, BlockData& toData);
     };
 
 

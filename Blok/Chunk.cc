@@ -2,8 +2,18 @@
 
 
 #include <Blok/Blok.hh>
+#include <Blok/Client.hh>
 
 namespace Blok {
+
+
+// NOTE: `toLoc` is set in local chunk coordinates
+bool Chunk::raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, BlockData& toData) {
+
+    // we didn't hit anything
+    return false;
+
+}
 
 
 void Chunk::calcVBO() {

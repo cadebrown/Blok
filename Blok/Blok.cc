@@ -31,6 +31,9 @@ namespace Blok {
 // global freetype library
 FT_Library ftlib;
 
+Map<ID, BlockProperties*> BlockProperties::all;
+
+
 /* oeprator overloads */
 
 bool operator<(ChunkID A, ChunkID B) {
@@ -237,10 +240,26 @@ bool initAll() {
     // output some information
     blok_info("Blok initialized successfully!");
 
+    // now, set up block info
+
+    #define ADDBLOCK(_id, _idname, _name) { \
+        BlockProperties::all[_id] = new BlockProperties(_id); \
+        BlockProperties::all[_id]->id_name = _idname; \
+        BlockProperties::all[_id]->name = _name; \
+    }
+
+    ADDBLOCK(ID::AIR, "AIR", "Air");
+    ADDBLOCK(ID::DIRT, "DIRT", "Dirt");
+    ADDBLOCK(ID::DIRT_GRASS, "DIRT_GRASS", "Dirt (Grass)");
+    ADDBLOCK(ID::STONE, "STONE", "Stone");
+
     blok_trace("sizeof(BlockData)==%ib", (int)sizeof(BlockData));
     blok_trace("sizeof(ID)==%ib", (int)sizeof(ID));
     int cb = CHUNK_NUM_BLOCKS * sizeof(BlockData);
     blok_trace("Chunk size: %ix%ix%i (%i blocks) (%ib, %ikb)", CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_NUM_BLOCKS, cb, cb / 1024);
+
+
+
 
 
     return true;
@@ -380,7 +399,7 @@ int main(int argc, char** argv) {
     client->gfx.renderer->pos = vec3(0, 14, -10);
 
     float speed = 40.0f;
-    client->gfx.renderer->pos = vec3(8, 40, 8);
+    client->gfx.renderer->pos = vec3(-10, 100, -10);
 
 
     // create a statistics object

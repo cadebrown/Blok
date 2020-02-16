@@ -307,11 +307,14 @@ void Renderer::render_end() {
         // bind the current mesh
         glBindVertexArray(MTs.first->glVAO); 
 
+        vec4 col = vec4(0.0f, 0.0f, 0.0f, 1.0f);
         // render all the transforms
         // TODO: we could put them into a VBO
         for (mat4 T : MTs.second) {
+            shaders["geom_mesh"]->setVec4("col", col);
             shaders["geom_mesh"]->setMat4("gM", T);             
             glDrawElements(GL_TRIANGLES, MTs.first->faces.size() * 3, GL_UNSIGNED_INT, 0);
+            col.r = fmodf(col.r + 0.1f, 1.0f);
 
             stats.n_tris += MTs.first->faces.size();
         }
@@ -340,7 +343,6 @@ void Renderer::render_end() {
         glBindTexture(GL_TEXTURE_2D, ftext->glTex);
         shaders["textquad"]->setInt("texFont", 8);
 
-
         for (auto& uit : entry.second) {
             if (uit.second->cache.lastText != uit.second->text || uit.second->cache.lastMaxWidth != uit.second->maxWidth) {
                 // recalculate it
@@ -361,11 +363,32 @@ void Renderer::render_end() {
     }
 
 
+    glDisable(GL_BLEND);
+
+    // render reticle
+    shaders["Reticle"]->use();
+
+    Texture* reticle = Texture::loadConst("assets/tex/reticle.png");
+
+    // set up the font texture
+    glActiveTexture(GL_TEXTURE9);
+    glBindTexture(GL_TEXTURE_2D, reticle->glTex);
+    shaders["Reticle"]->setInt("texFont", 9);
+
+    float size = 20.0f;
+
+    shaders["Reticle"]->setMat4("gT", gP_text * glm::translate(vec3(width / 2.0f, height / 2.0f, 0.0f)) * glm::scale(vec3(size, size, 1)));
+    Mesh* ssq = Mesh::getConstSSQ();
+
+    // now, draw it
+    glBindVertexArray(ssq->glVAO);
+    glDrawElements(GL_TRIANGLES, ssq->faces.size() * 3, GL_UNSIGNED_INT, 0);
+    stats.n_tris += ssq->faces.size();
+
 
     // do an error check and make sure everything was valid
     check_GL();
 
-    Mesh* ssq = Mesh::getConstSSQ();
     glBindFramebuffer(GL_FRAMEBUFFER, targets["ssq"]->glFBO);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST); 
