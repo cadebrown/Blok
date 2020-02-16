@@ -399,7 +399,7 @@ int main(int argc, char** argv) {
     client->gfx.renderer->pos = vec3(0, 14, -10);
 
     float speed = 40.0f;
-    client->gfx.renderer->pos = vec3(-10, 100, -10);
+    client->gfx.renderer->pos = vec3(0, 100, 0);
 
 
     // create a statistics object

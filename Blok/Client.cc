@@ -197,11 +197,11 @@ bool Client::frame() {
         if (input.mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
             // place block
 
-            vec3 targetPos = hittarget + hitNormal;
-            Chunk* cur = server->getChunkIfLoaded(ChunkID(floorf(targetPos.x/16), floorf(targetPos.z/16)));
-            vec3 localPos = targetPos - vec3(cur->getWorldPos());
+            vec3i targetPos = vec3i(glm::floor(hittarget + hitNormal));
+            Chunk* cur = server->getChunkIfLoaded(ChunkID(targetPos.x/16, targetPos.z/16));
+            vec3i localPos = targetPos - cur->getWorldPos();
 
-            cur->set((int)localPos.x, (int)localPos.y, (int)localPos.z, {ID::STONE});
+            cur->set(localPos.x, localPos.y, localPos.z, {ID::STONE});
 
         } else if (input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
             // delete block
