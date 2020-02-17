@@ -1,6 +1,5 @@
 
-
-# declare our main executable
+# declare our main executable for our game, with all source codes
 add_executable (Blok
     # in-tree dependencies/generated code
     gl3w/gl3w.c 
@@ -16,7 +15,4 @@ add_executable (Blok
 )
 
 # link the libraries with all the dependency libraries
-target_link_libraries(Blok ${blok_deps} pthread dl m GL GLU Xrandr Xext X11 zlibstatic IrrXML asound jack)
-
-
-
+target_link_libraries(Blok ${blok_deps})

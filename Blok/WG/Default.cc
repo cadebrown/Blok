@@ -14,13 +14,12 @@ DefaultWG::DefaultWG(uint32_t seed) {
     pmgen = Random::PerlinMux();
 
     // add a basic layer
-    pmgen.addLayer(Random::Perlin(seed++, vec3(0.002), vec2(0.3, 0.65), vec2(30, 80)));
-    pmgen.addLayer(Random::Perlin(seed++, vec3(0.02), vec2(0.2, 0.9), vec2(0, 20)));
-    pmgen.addLayer(Random::Perlin(seed++, vec3(0.007, .03, 0.0), vec2(0.7, 0.73), vec2(0, -40)));
+    pmgen.addLayer(Random::Perlin(seed + 1, vec3(0.002), vec2(0.3, 0.65), vec2(30, 80)));
+    pmgen.addLayer(Random::Perlin(seed + 2, vec3(0.02), vec2(0.2, 0.9), vec2(0, 20)));
+    pmgen.addLayer(Random::Perlin(seed + 3, vec3(0.007, .03, 0.0), vec2(0.7, 0.73), vec2(0, -40)));
 
     cavegen = Random::PerlinMux();
-    cavegen.addLayer(Random::Perlin(seed++, vec3(0.03, 0.09, 0.03), vec2(.6, .7), vec2(0.0, 1.0)));
-
+    cavegen.addLayer(Random::Perlin(seed + 4, vec3(0.03, 0.09, 0.03), vec2(.6, .7), vec2(0.0, 1.0)));
 }
 
 Chunk* DefaultWG::getChunk(ChunkID id) {

@@ -404,12 +404,6 @@ namespace Blok {
             if (res[2] < 0) res[2] += CHUNK_SIZE_Z;
             return res;
         }
-
-        // raycast just the current chunk, up to 'maxDist' from `ray.origin` All 'Ray' coordinates are in local space
-        // returns true if found, and if so, sets the 'to*' arguments to the data about the hit
-        // if it is not a hit, set `toLoc` to the end of the volume, where it stopped looking
-        // NOTE: `toLoc` is set in local chunk coordinates
-        bool raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, BlockData& toData);
         
         // get the block data at a given local coordinate
         // i.e. 0 <= x < BLOCK_SIZE_X
@@ -446,6 +440,37 @@ namespace Blok {
         }
 
     };
+
+    // RayHit - datastructure describing
+    struct RayHit {
+        
+        // a true/false descibing whether the ray intersected geometry within its range
+        bool hit;
+
+        // the distance along the ray at which the collision occured
+        float dist;
+
+        // the position at which the ray hit the geometry
+        vec3 pos;
+
+        // the normal vector of the surface at which the ray collided with
+        vec3 normal;
+
+
+        // the quantized indicies (in world space) of the block in which the collision happened
+        vec3i blockPos;
+
+        RayHit(bool hit=false, float dist=0.0f, vec3 normal={0,0,0}, vec3 pos={0,0,0}) {
+            this->hit = hit;
+            this->dist = dist;
+            this->normal = normal;
+            this->pos = pos;
+            // always just floor it
+            this->blockPos = glm::floor(pos);
+        }
+
+    };
+
 
     /* GLOBAL VARIABLES */
 

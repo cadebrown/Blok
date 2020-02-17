@@ -9,7 +9,7 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 # Default to release, if not specified
 if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
-endif ()
+endif()
 
 # set C++ flags to always check for errors
 set(CMAKE_CXX_FLAGS "-Wall -Wextra")
@@ -20,6 +20,8 @@ set(CMAKE_CXX_FLAGS_DEBUG "-g")
 # default release to -O3 for optimization
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 
+# set variables that are needed
+set(BUILD_STATIC_LIB ON)
 
 # requirement: OpenGL configuration
 find_package(OpenGL REQUIRED)
@@ -38,27 +40,32 @@ message("PORTAUDIO_DIR: " ${PORTAUDIO_DIR})
 message("FREETYPE_DIR: " ${FREETYPE_DIR})
 
 # set the variable 
-set(blok_deps ${GLFW_DIR}/src/libglfw3.a ${ASSIMP_DIR}/lib/libassimp.a ${PORTAUDIO_DIR}/lib/.libs/libportaudio.a ${FREETYPE_DIR}/objs/.libs/libfreetype.a)
-
+#set(blok_deps ${GLFW_DIR}/src/libglfw3.a ${ASSIMP_DIR}/lib/libassimp.a ${PORTAUDIO_DIR}/lib/.libs/libportaudio.a ${FREETYPE_DIR}/objs/.libs/libfreetype.a)
+set(blok_deps glfw3 assimp portaudio freetype dl m GL GLU Xrandr Xext X11 zlibstatic IrrXML asound jack pthread)
 
 # add these directories to search for
 link_directories(
-    ${ASSIMP_DIR}/lib
+    ${CMAKE_CURRENT_BINARY_DIR}/prefix/lib
+
+    #${GLFW_DIR}/src
+    #${ASSIMP_DIR}/lib
+    #${PORTAUDIO_DIR}/lib/.libs
+    #${FREETYPE_DIR}/objs/.libs
 )
 
 # include this like with -I
 include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}
-    ${GLFW_DIR}/include
-    ${ASSIMP_DIR}/include
-    ${PORTAUDIO_DIR}/include
-    ${FREETYPE_DIR}/include
-)
 
-# set variables that are needed
-set(BUILD_STATIC_LIB ON)
+    ${CMAKE_CURRENT_BINARY_DIR}/prefix/include
+    ${CMAKE_CURRENT_BINARY_DIR}/prefix/include/freetype2
+
+    #${GLFW_DIR}/include
+    #${ASSIMP_DIR}/include
+    #${PORTAUDIO_DIR}/include
+    #${FREETYPE_DIR}/include
+)
 
 # build the executable
 add_subdirectory(Blok)
-#add_subdirectory(examples)
 
