@@ -118,7 +118,8 @@ namespace Blok {
         // raycast() should seek through all possible chunks, checking intersection along 'ray',
         //   up to 'maxDist'. If it ends up hitting a solid block, return true and set all the 'to*'
         //   arguments to the data about the hit
-        bool raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, BlockData& toData);
+        bool raycastBlock(Ray ray, float dist, RayHit& hitInfo);
+
     };
 
 

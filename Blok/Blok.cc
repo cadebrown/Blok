@@ -415,6 +415,7 @@ int main(int argc, char** argv) {
     while (client->frame()) {
         
         vec3 moveZ = client->gfx.renderer->forward;
+        moveZ.y = 0;
         moveZ = normalize(moveZ);
 
         vec3 moveX = glm::cross(client->gfx.renderer->up, client->gfx.renderer->forward);

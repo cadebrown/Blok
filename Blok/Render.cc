@@ -321,12 +321,32 @@ void Renderer::render_end() {
     }
 
 
+
+    // render debugging lines
+    if (queue.lines.size() > 0) {
+        // render debugging lines
+
+        shaders["DebugLine"]->use();
+        shaders["DebugLine"]->setMat4("gPV", gPV);
+
+        // now, draw debug lines
+        glBindBuffer(GL_ARRAY_BUFFER, debug.glLinesVBO);
+        // This hands the vertices into the vbo and to the rendering pipeline    
+        glBufferData(GL_ARRAY_BUFFER, sizeof(queue.lines[0]) * queue.lines.size(), &queue.lines[0], GL_STATIC_DRAW);
+
+        glVertexPointer(2, GL_FLOAT, 0, line_vertex);
+        glDrawArrays(GL_LINES, 0, 2);
+    }
+
+
     /* RENDER UI/TEXT PASS */
 
     // first, set up state
     // enable blending so just the colored parts of the text show up
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+    glDisable(GL_DEPTH_TEST); 
 
     // use the shader for rending characters
     shaders["textquad"]->use();
@@ -362,8 +382,7 @@ void Renderer::render_end() {
         }
     }
 
-
-    glDisable(GL_BLEND);
+    
 
     // render reticle
     shaders["Reticle"]->use();
@@ -415,6 +434,7 @@ void Renderer::render_end() {
     glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["ssq"]->glFBO);
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glDrawBuffer(GL_BACK);
+
     
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
@@ -426,6 +446,8 @@ void Renderer::render_end() {
     queue.meshes.clear();
     // clera all tests
     queue.texts.clear();
+
+    queue.lines.clear();
 
     // do an error check
     check_GL();

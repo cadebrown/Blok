@@ -7,10 +7,10 @@ namespace Blok {
 // raycast() should seek through all possible chunks, checking intersection along 'ray',
 //   up to 'maxDist'. If it ends up hitting a solid block, return true and set all the 'to*'
 //   arguments to the data about the hit
-bool LocalServer::raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, BlockData& toData) {
+bool LocalServer::raycastBlock(Ray ray, float maxDist, RayHit& hitInfo) {
+
     // the basic algorithm is: view the entire `XZ` plane as a pixel, and use this algo: https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     // along the chunks, then call the individual chunk.raycast() functions with translated coordinates
-
 
     // current x, y, z position
     float x = floorf(ray.orig.x);
@@ -52,7 +52,7 @@ bool LocalServer::raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, B
     Chunk* cc = NULL;
 
     // by default
-    toNormal = {0, 1, 0};
+    //toNormal = {0, 1, 0};
 
     // probe until we hit an unknown chunk, or exceed the max radius
     while (true) {
@@ -68,8 +68,12 @@ bool LocalServer::raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, B
         //printf("local:%i,%i,%i\n", local.x, local.y, local.z);
 
         // probe the block, and check if it is not air
-        if ((toData = cc->get(local.x, local.y, local.z)).id != ID::AIR) {
-            toLoc = vec3(x, y, z);
+        if ((hitInfo.blockData = cc->get(local.x, local.y, local.z)).id != ID::AIR) {
+            //toLoc = vec3(x, y, z);
+            hitInfo.hit = true;
+            hitInfo.pos = vec3(x, y, z);
+            hitInfo.dist = sqrtf(tMaxX*tMaxX + tMaxY*tMaxY + tMaxZ*tMaxZ);
+            hitInfo.blockPos = cc->getWorldPos() + local;
             return true;
         }
 
@@ -79,27 +83,29 @@ bool LocalServer::raycast(Ray ray, float maxDist, vec3& toLoc, vec3& toNormal, B
                 if (tMaxX > radius) break;
                 x += stepX;
                 tMaxX += tDeltaX;
-                toNormal = {-stepX, 0, 0};
+                hitInfo.normal = {-stepX, 0, 0};
             } else {
                 if (tMaxZ > radius) break;
                 z += stepZ;
                 tMaxZ += tDeltaZ;
-                toNormal = {0, 0, -stepZ};
+                hitInfo.normal = {0, 0, -stepZ};
             }
         } else {
             if (tMaxY < tMaxZ) {
                 y += stepY;
                 tMaxY += tDeltaY;
-                toNormal = {0, -stepY, 0};
+                hitInfo.normal = {0, -stepY, 0};
             } else {
                 if (tMaxZ > radius) break;
                 z += stepZ;
                 tMaxZ += tDeltaZ;
-                toNormal = {0, 0, -stepZ};
+                hitInfo.normal = {0, 0, -stepZ};
             }
         }
     }
 
+    hitInfo.blockData.id = ID::AIR;
+    hitInfo.hit = false;
 
     // we didn't hit anything
     return false;

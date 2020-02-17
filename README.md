@@ -17,4 +17,10 @@ The executable should be located as `Blok/Blok`, so run `./Blok/Blok` to run the
 Blok should build on any machine that has a C++11 compiler, and basic POSIX support
 
 
+## Engine
+
+Eventually, I plan to port the rendering engine to a more generic interface (probably in this style of C++), that could be used for general purpose 3D rendering (not neccessarily voxel).
+
+Eventually, I want to make that new engine compatible with Vulkan, but I'll have to learn that first
+
 

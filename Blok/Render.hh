@@ -411,7 +411,17 @@ namespace Blok::Render {
             // list of strings to render on screen along with their positions
             Map<FontTexture*, List< Pair<vec2, UIText*> > > texts;
 
+            // list of lines to debug
+            List< Pair<vec3, vec3> > lines;
+
         } queue;
+
+        // struct describing debug drawing operations
+        struct {
+            // VBO for a set of lines
+            uint glLinesVAO, glLinesVBO;
+
+        } debug;
 
 
         // keep stats about rendering
@@ -475,6 +485,7 @@ namespace Blok::Render {
             shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
             shaders["textquad"] = Shader::load("resources/textquad.vs", "resources/textquad.fs");
             shaders["Reticle"] = Shader::load("assets/shaders/Reticle.vert", "assets/shaders/Reticle.frag");
+            shaders["DebugLine"] = Shader::load("assets/shaders/DebugLine.vert", "assets/shaders/DebugLine.frag");
 
             // construct basic mesh
             /*mymesh = new Mesh({
@@ -485,6 +496,22 @@ namespace Blok::Render {
                 {0, 1, 2}
             });*/
             mymesh = Mesh::loadConst("assets/obj/UnitCube.obj");
+
+            glGenVertexArrays(1, &debug.glLinesVAO);
+            glGenBuffers(1, &debug.glLinesVBO);
+
+            glBindBuffer(GL_ARRAY_BUFFER, debug.glLinesVBO);
+            //glBufferData(GL_ARRAY_BUFFER, audio_model->get_sizeof_fish_array(), audio_model->get_address_fish_array(), GL_DYNAMIC_DRAW);
+
+            glVertexAttribPointer(
+                0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
+                3,                  // size
+                GL_FLOAT,           // type
+                GL_FALSE,           // normalized?
+                0,                  // stride
+                (void*)0            // array buffer offset
+            );
+            glEnableVertexAttribArray(0);
 
             //glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
             //glBufferData(GL_ARRAY_BUFFER, sizeof(mat4), &translations[0], GL_STATIC_DRAW);

@@ -203,8 +203,14 @@ namespace Blok {
     // ChunkID - type defining the Chunk's macro coordinates world space
     // The actual world XZ is given by CHUNK_SIZE_X * XZ.X and CHUNK_SIZE_Z * XZ.Z
     struct ChunkID {
+        // macro coordinates of the chunk
         int X, Z;
 
+        static ChunkID fromPos(vec3i pos) {
+            return ChunkID(floor(pos.x/16.0f), floor(pos.z/16.0f));
+        }
+
+        // construct from macro coordinates
         ChunkID(int X=0, int Z=0) {
             this->X = X;
             this->Z = Z;
@@ -456,17 +462,21 @@ namespace Blok {
         // the normal vector of the surface at which the ray collided with
         vec3 normal;
 
-
         // the quantized indicies (in world space) of the block in which the collision happened
         vec3i blockPos;
 
-        RayHit(bool hit=false, float dist=0.0f, vec3 normal={0,0,0}, vec3 pos={0,0,0}) {
+        // block data that was hit
+        BlockData blockData;
+
+
+        RayHit(bool hit=false, float dist=0.0f, vec3 normal={0,0,0}, vec3 pos={0,0,0}, BlockData bockData={ID::AIR}) {
             this->hit = hit;
             this->dist = dist;
             this->normal = normal;
             this->pos = pos;
             // always just floor it
             this->blockPos = glm::floor(pos);
+            this->blockData = blockData;
         }
 
     };

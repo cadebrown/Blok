@@ -147,7 +147,6 @@ Mesh::Mesh(const List<Vertex>& vertices, const List<Face>& faces) {
     glGenBuffers(1, &glVBO);
     glGenBuffers(1, &glEBO);
 
-
     // now, innitialize the OpenGL information and send the vertex data to the GPU
     glBindVertexArray(glVAO);
     

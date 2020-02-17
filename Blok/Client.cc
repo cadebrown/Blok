@@ -181,37 +181,36 @@ bool Client::frame() {
         }
     }
 
-    vec3 hittarget, hitNormal;
-    BlockData hitBlock{ID::AIR};
-    bool hit = server->raycast(Ray(gfx.renderer->pos, gfx.renderer->forward), 50.0f, hittarget, hitNormal, hitBlock);
-
-    if (!hit) {
-        hitBlock = {ID::AIR};
-        hittarget = {0, 0, 0};
-        hitNormal = {0, 0, 0};
-    } else {
-
+    // capture information about the hit
+    RayHit hit;
+    
+    // perform a raycastBlock
+    if (server->raycastBlock(Ray(gfx.renderer->pos, gfx.renderer->forward), 20.0f, hit)) {
         Render::Mesh* outline = Render::Mesh::loadConst("assets/obj/UnitCubeOutline.obj");
-        gfx.renderer->renderMesh(outline, glm::translate(hittarget));
+        gfx.renderer->renderMesh(outline, glm::translate(vec3(hit.blockPos)));
 
         if (input.mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
             // place block
 
-            vec3i targetPos = vec3i(glm::floor(hittarget + hitNormal));
-            Chunk* cur = server->getChunkIfLoaded(ChunkID(targetPos.x/16, targetPos.z/16));
+            // TODO: call a server->setBlock() method
+
+            // compute one block off
+            vec3i targetPos = vec3i(glm::floor(vec3(hit.blockPos) + hit.normal));
+            Chunk* cur = server->getChunkIfLoaded(ChunkID::fromPos(targetPos));
             vec3i localPos = targetPos - cur->getWorldPos();
 
             cur->set(localPos.x, localPos.y, localPos.z, {ID::STONE});
 
         } else if (input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
             // delete block
-            vec3 targetPos = hittarget;
-            Chunk* cur = server->getChunkIfLoaded(ChunkID(floorf(targetPos.x/16), floorf(targetPos.z/16)));
-            vec3 localPos = targetPos - vec3(cur->getWorldPos());
+            Chunk* cur = server->getChunkIfLoaded(ChunkID::fromPos(hit.blockPos));
+            vec3i localPos = hit.blockPos - cur->getWorldPos();
 
-            cur->set((int)localPos.x, (int)localPos.y, (int)localPos.z, {ID::AIR});
+            cur->set(localPos.x, localPos.y, localPos.z, {ID::AIR});
         }
 
+    } else {
+        hit.blockData = {ID::AIR};
     }
 
     //Render::Mesh* sph = Render::Mesh::loadConst("assets/obj/Sphere.obj");
@@ -229,14 +228,16 @@ bool Client::frame() {
         gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
         rendid.X, rendid.Z,
         smoothFPS,
-        BlockProperties::all[hitBlock.id]->name.c_str(),
-        hittarget.x, hittarget.y, hittarget.z,
-        hitNormal.x, hitNormal.y, hitNormal.z
+        BlockProperties::all[hit.blockData.id]->name.c_str(),
+        hit.pos.x, hit.pos.y, hit.pos.z,
+        hit.normal.x, hit.normal.y, hit.normal.z
     );
 
 
     uit->text = tmp;
     gfx.renderer->renderText({10, gfx.renderer->height-10}, uit);
+    gfx.renderer->queue.lines.push_back({{0, 100, 0}, {32, 100, 32}});
+
 
     // tell it we are done
     gfx.renderer->render_end();
