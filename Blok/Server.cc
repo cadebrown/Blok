@@ -2,6 +2,8 @@
 
 #include <Blok/Server.hh>
 
+#include <Blok/Client.hh>
+
 namespace Blok {
 
 // raycast() should seek through all possible chunks, checking intersection along 'ray',
@@ -12,98 +14,134 @@ bool LocalServer::raycastBlock(Ray ray, float maxDist, RayHit& hitInfo) {
     // the basic algorithm is: view the entire `XZ` plane as a pixel, and use this algo: https://en.wikipedia.org/wiki/Bresenham%27s_line_algorithm
     // along the chunks, then call the individual chunk.raycast() functions with translated coordinates
 
+    ray.dir = glm::normalize(ray.dir);
+
     // current x, y, z position
-    float x = floorf(ray.orig.x);
-    float y = floorf(ray.orig.y);
-    float z = floorf(ray.orig.z);
+    vec3 xyz = glm::floor(ray.orig);
 
     // the amount to change xyz by
-    float dx = ray.dir.x;
-    float dy = ray.dir.y;
-    float dz = ray.dir.z;
-    
-    // invalid, just report nothing
-    if (dx == 0 && dy == 0 && dz == 0) return false;
+    vec3 dxyz = ray.dir;
 
     // how to step in various directions, i.e. +1 if it is positive, -1 if it is negative, 0 if it is 0
-    float stepX = glm::sign(dx);
-    float stepY = glm::sign(dy);
-    float stepZ = glm::sign(dz);
+    vec3 step_xyz = glm::sign(dxyz);
 
+    // invalid, just report nothing
+    if (step_xyz.x == 0.0f && step_xyz.y == 0.0f && step_xyz.z == 0.0f) {
+        static double cTime = 0.0;
+        if (getTime() >= cTime) {
+            cTime = getTime() + 4.0;
+            blok_warn("Raycast given dx=dy=dz=0");
+        }
+        return false;
+    }
 
     // max & delta have to deal with the error term. Essentially, we want to process the minimum maximum error
     //  and update in that axis at a given time
-    float tMaxX = intBound(ray.orig.x, dx);
-    float tMaxY = intBound(ray.orig.y, dy);
-    float tMaxZ = intBound(ray.orig.z, dz);
+    vec3 tMax = { 
+        intBound(ray.orig.x, dxyz.x),
+        intBound(ray.orig.y, dxyz.y),
+        intBound(ray.orig.z, dxyz.z)
+    };
+    
 
-    // how much to change the minmax by
-    float tDeltaX = stepX / dx;
-    float tDeltaY = stepY / dy;
-    float tDeltaZ = stepZ / dz;
+    // how much to change the minmax by at any given iteration
+    vec3 tDelta = step_xyz / dxyz;
 
-    // escape radius
-    float radius = maxDist / sqrtf(dx*dx+dy*dy+dz*dz);
-
-    // the last chunk ID, to speed up/cache results
+    // the last chunk ID, to speed up/cache results by not looking it up every block
     ChunkID lastChunkID;
     
     // current chunk
     Chunk* cc = NULL;
 
-    // by default
-    //toNormal = {0, 1, 0};
-
-    // probe until we hit an unknown chunk, or exceed the max radius
+    // keep trying, break inside if there's a problem
     while (true) {
+        
+        // get block coordinates
+        vec3i xyz_i = vec3i(glm::floor(xyz));
 
-        ChunkID cid = {(int)floorf(x/16.0f), floorf(z/16.0f)};
+        // skip blocks that are invalid coordinates, but continue the loop, in case it
+        //   comes back into existence
+        if (xyz_i.y >= 0 && xyz_i.y < CHUNK_SIZE_Y) {
 
-        cc = (!cc || cid != lastChunkID) ? getChunkIfLoaded(cid) : cc;
-        if (!cc) return false;
+            // see what chunk the block would fall in, from the given integer coordinates
+            ChunkID cid = ChunkID::fromPos(xyz_i);
 
-        // convert to local indices
-        vec3i local = vec3i(glm::floor(vec3(x, y, z))) - cc->getWorldPos();
+            // check if we have changed chunks. If so, look it up by ID
+            if (cc == NULL || cid != lastChunkID) cc = getChunkIfLoaded(cid);
 
-        //printf("local:%i,%i,%i\n", local.x, local.y, local.z);
+            // if the current chunk doesn't exist, we can raycast no farther, so we say we haven't hit anything
+            if (!cc) return false;
 
-        // probe the block, and check if it is not air
-        if ((hitInfo.blockData = cc->get(local.x, local.y, local.z)).id != ID::AIR) {
-            //toLoc = vec3(x, y, z);
-            hitInfo.hit = true;
-            hitInfo.pos = vec3(x, y, z);
-            hitInfo.dist = sqrtf(tMaxX*tMaxX + tMaxY*tMaxY + tMaxZ*tMaxZ);
-            hitInfo.blockPos = cc->getWorldPos() + local;
-            return true;
+            // update variable so that we can keep the results cached
+            lastChunkID = cid;
+
+            // convert to local coordinates
+            vec3i local = xyz_i - cc->getWorldPos();
+
+            // debug codes:
+            //printf("local:%i,%i,%i\n", local.x, local.y, local.z);
+            //dirtyClient->gfx.renderer->renderMesh(Render::Mesh::loadConst("assets/obj/Sphere.obj"), glm::translate(xyz + vec3(0.5)) * glm::scale(vec3(0.3)));
+
+            // probe the block, and check if it is not air
+            if ((hitInfo.blockData = cc->get(local.x, local.y, local.z)).id != ID::AIR) {
+                // obviously, we've hit
+                hitInfo.hit = true;
+
+                // get the distance
+                hitInfo.dist = glm::distance(glm::floor(ray.orig), xyz);
+
+                // set the block index to the one that was checked
+                hitInfo.blockPos = xyz_i;
+
+                // set the position it was hit at
+
+                // now, update the position, since it must be on the face of the dot
+                if (hitInfo.normal.x != 0.0f) {
+                    // calculate actual intersection point
+                    float ds = (xyz_i.x + (hitInfo.normal.x>0?1:0)) - ray.orig.x;
+                    hitInfo.pos = ray.orig + ds / ray.dir.x * ray.dir;
+                } else if (hitInfo.normal.y != 0.0f) {
+                    // calculate actual intersection point
+                    float ds = (xyz_i.y + (hitInfo.normal.y>0?1:0)) - ray.orig.y;
+                    hitInfo.pos = ray.orig + ds / ray.dir.y * ray.dir;
+                } else if (hitInfo.normal.z != 0.0f) {
+                    // calculate actual intersection point
+                    float ds = (xyz_i.z + (hitInfo.normal.z>0?1:0)) - ray.orig.z;
+                    hitInfo.pos = ray.orig + ds / ray.dir.z * ray.dir;
+                }
+
+                return true;
+            }
         }
 
-        // else, update error terms & check escape conditions
-        if (tMaxX < tMaxY) {
-            if (tMaxX < tMaxZ) {
-                if (tMaxX > radius) break;
-                x += stepX;
-                tMaxX += tDeltaX;
-                hitInfo.normal = {-stepX, 0, 0};
+        // enow, update error terms, update the 'neediest' axis, and recheck all bounds
+        if (tMax.x < tMax.y) {
+            if (tMax.x < tMax.z) {
+                if (tMax.x > maxDist) break;
+                xyz.x += step_xyz.x;
+                tMax.x += tDelta.x;
+                hitInfo.normal = { -step_xyz.x, 0, 0 };
             } else {
-                if (tMaxZ > radius) break;
-                z += stepZ;
-                tMaxZ += tDeltaZ;
-                hitInfo.normal = {0, 0, -stepZ};
+                if (tMax.z > maxDist) break;
+                xyz.z += step_xyz.z;
+                tMax.z += tDelta.z;
+                hitInfo.normal = { 0, 0, -step_xyz.z };
             }
         } else {
-            if (tMaxY < tMaxZ) {
-                y += stepY;
-                tMaxY += tDeltaY;
-                hitInfo.normal = {0, -stepY, 0};
+            if (tMax.y < tMax.z) {
+                xyz.y += step_xyz.y;
+                tMax.y += tDelta.y;
+                hitInfo.normal = { 0, -step_xyz.y, 0 };
             } else {
-                if (tMaxZ > radius) break;
-                z += stepZ;
-                tMaxZ += tDeltaZ;
-                hitInfo.normal = {0, 0, -stepZ};
+                if (tMax.z > maxDist) break;
+                xyz.z += step_xyz.z;
+                tMax.z += tDelta.z;
+                hitInfo.normal = { 0, 0, -step_xyz.z };
             }
         }
     }
-
+    
+    // make sure these 2 variables are set
     hitInfo.blockData.id = ID::AIR;
     hitInfo.hit = false;
 

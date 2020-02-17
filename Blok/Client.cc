@@ -189,19 +189,31 @@ bool Client::frame() {
         Render::Mesh* outline = Render::Mesh::loadConst("assets/obj/UnitCubeOutline.obj");
         gfx.renderer->renderMesh(outline, glm::translate(vec3(hit.blockPos)));
 
-        if (input.mouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
+
+
+        // test debug line
+        //gfx.renderer->renderDebugLine(hit.pos + vec3(0.5) + 0.5f * hit.normal, hit.pos + vec3(0.5) + 1.0f * hit.normal);
+        //gfx.renderer->renderDebugLine(hit.pos, hit.pos + 0.5f * hit.normal);
+        //printf("%f,%f,%f\n", hit.normal.x, hit.normal.y, hit.normal.z);
+
+
+        if (input.mouseButtons[GLFW_MOUSE_BUTTON_RIGHT] && !input.lastMouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
             // place block
 
             // TODO: call a server->setBlock() method
 
             // compute one block off
             vec3i targetPos = vec3i(glm::floor(vec3(hit.blockPos) + hit.normal));
-            Chunk* cur = server->getChunkIfLoaded(ChunkID::fromPos(targetPos));
-            vec3i localPos = targetPos - cur->getWorldPos();
+            if (targetPos.y >= 0 && targetPos.y < CHUNK_SIZE_Y) {
+                // set it
+                Chunk* cur = server->getChunkIfLoaded(ChunkID::fromPos(targetPos));
+                vec3i localPos = targetPos - cur->getWorldPos();
 
-            cur->set(localPos.x, localPos.y, localPos.z, {ID::STONE});
+                cur->set(localPos.x, localPos.y, localPos.z, {ID::STONE});
+            }
 
-        } else if (input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
+
+        } else if (input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT] && !input.lastMouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
             // delete block
             Chunk* cur = server->getChunkIfLoaded(ChunkID::fromPos(hit.blockPos));
             vec3i localPos = hit.blockPos - cur->getWorldPos();
@@ -212,6 +224,14 @@ bool Client::frame() {
     } else {
         hit.blockData = {ID::AIR};
     }
+
+    // draw coordinate axes
+    /*
+    vec3 infront = gfx.renderer->pos + gfx.renderer->forward;
+    gfx.renderer->renderDebugLine(infront, infront + vec3(0.1f, 0.0f, 0.0f), {1, 0, 0});
+    gfx.renderer->renderDebugLine(infront, infront + vec3(0.0f, 0.1f, 0.0f), {0, 1, 0});
+    gfx.renderer->renderDebugLine(infront, infront + vec3(0.0f, 0.0f, 0.1f), {0, 0, 1});
+    */
 
     //Render::Mesh* sph = Render::Mesh::loadConst("assets/obj/Sphere.obj");
 
@@ -236,8 +256,6 @@ bool Client::frame() {
 
     uit->text = tmp;
     gfx.renderer->renderText({10, gfx.renderer->height-10}, uit);
-    gfx.renderer->queue.lines.push_back({{0, 100, 0}, {32, 100, 32}});
-
 
     // tell it we are done
     gfx.renderer->render_end();

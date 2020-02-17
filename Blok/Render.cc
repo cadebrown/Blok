@@ -24,7 +24,7 @@ void Renderer::renderChunk(ChunkID id, Chunk* chunk) {
     queue.chunks[id] = chunk;
 }
 
-
+// render a mesh with a transform
 void Renderer::renderMesh(Mesh* mesh, mat4 T) {
 
     if (queue.meshes.find(mesh) == queue.meshes.end()) {
@@ -34,14 +34,19 @@ void Renderer::renderMesh(Mesh* mesh, mat4 T) {
 
     // now, push it on that list, so we mark it for rendering
     queue.meshes[mesh].push_back(T);
-
 }
+
 void Renderer::renderText(vec2 pxy, UIText* text, vec2 scalexy) {
     if (queue.texts.find(text->font) == queue.texts.end()) {
         queue.texts[text->font] = {};
     }
 
     queue.texts[text->font].push_back({pxy, text});
+}
+
+// render a debug line
+void Renderer::renderDebugLine(vec3 start, vec3 end, vec3 col) {
+    queue.lines.push_back({start, col, end, col});
 }
 
 
@@ -321,7 +326,6 @@ void Renderer::render_end() {
     }
 
 
-
     // render debugging lines
     if (queue.lines.size() > 0) {
         // render debugging lines
@@ -331,13 +335,12 @@ void Renderer::render_end() {
 
         // now, draw debug lines
         glBindBuffer(GL_ARRAY_BUFFER, debug.glLinesVBO);
-        // This hands the vertices into the vbo and to the rendering pipeline    
-        glBufferData(GL_ARRAY_BUFFER, sizeof(queue.lines[0]) * queue.lines.size(), &queue.lines[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(queue.lines[0]) * queue.lines.size(), &queue.lines[0], GL_DYNAMIC_DRAW);
 
-        glVertexPointer(2, GL_FLOAT, 0, line_vertex);
-        glDrawArrays(GL_LINES, 0, 2);
+        // now actually render the lines
+        glBindVertexArray(debug.glLinesVAO);
+        glDrawArrays(GL_LINES, 0, 2 * queue.lines.size());
     }
-
 
     /* RENDER UI/TEXT PASS */
 
@@ -383,8 +386,12 @@ void Renderer::render_end() {
     }
 
     
+    Mesh* ssq = Mesh::getConstSSQ();
 
     // render reticle
+
+    glDisable(GL_BLEND);
+
     shaders["Reticle"]->use();
 
     Texture* reticle = Texture::loadConst("assets/tex/reticle.png");
@@ -394,10 +401,9 @@ void Renderer::render_end() {
     glBindTexture(GL_TEXTURE_2D, reticle->glTex);
     shaders["Reticle"]->setInt("texFont", 9);
 
-    float size = 20.0f;
+    float size = 16.0f;
 
     shaders["Reticle"]->setMat4("gT", gP_text * glm::translate(vec3(width / 2.0f, height / 2.0f, 0.0f)) * glm::scale(vec3(size, size, 1)));
-    Mesh* ssq = Mesh::getConstSSQ();
 
     // now, draw it
     glBindVertexArray(ssq->glVAO);

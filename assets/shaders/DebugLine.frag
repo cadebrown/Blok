@@ -17,5 +17,5 @@ void main() {
 
     // color it red by default
     gColor = fCol;
-
+    //gColor = vec4(1, 0, 0, 0);
 }

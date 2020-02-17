@@ -207,7 +207,7 @@ namespace Blok {
         int X, Z;
 
         static ChunkID fromPos(vec3i pos) {
-            return ChunkID(floor(pos.x/16.0f), floor(pos.z/16.0f));
+            return ChunkID(glm::floor((double)pos.x/16.0), floor((double)pos.z/16.0));
         }
 
         // construct from macro coordinates

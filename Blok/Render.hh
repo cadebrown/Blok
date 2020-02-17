@@ -397,6 +397,7 @@ namespace Blok::Render {
         mat4 gP, gV;
 
 
+
         // the current queue of things that need to be rendered in the current frame
         struct RendererQueue {
             
@@ -411,8 +412,9 @@ namespace Blok::Render {
             // list of strings to render on screen along with their positions
             Map<FontTexture*, List< Pair<vec2, UIText*> > > texts;
 
-            // list of lines to debug
-            List< Pair<vec3, vec3> > lines;
+            // list of lines to debug, in:
+            // <start, color, end, color>
+            List< std::array<vec3, 4> > lines;
 
         } queue;
 
@@ -497,25 +499,25 @@ namespace Blok::Render {
             });*/
             mymesh = Mesh::loadConst("assets/obj/UnitCube.obj");
 
+            // generate the debug line array
             glGenVertexArrays(1, &debug.glLinesVAO);
             glGenBuffers(1, &debug.glLinesVBO);
 
+            glBindVertexArray(debug.glLinesVAO);
+
             glBindBuffer(GL_ARRAY_BUFFER, debug.glLinesVBO);
-            //glBufferData(GL_ARRAY_BUFFER, audio_model->get_sizeof_fish_array(), audio_model->get_address_fish_array(), GL_DYNAMIC_DRAW);
 
-            glVertexAttribPointer(
-                0,                  // attribute. No particular reason for 0, but must match the layout in the shader.
-                3,                  // size
-                GL_FLOAT,           // type
-                GL_FALSE,           // normalized?
-                0,                  // stride
-                (void*)0            // array buffer offset
-            );
-            glEnableVertexAttribArray(0);
+            // vertex positions
+            glEnableVertexAttribArray(0);	
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(vec3), (void*)0);
 
-            //glBindBuffer(GL_ARRAY_BUFFER, glBlockVBO);
-            //glBufferData(GL_ARRAY_BUFFER, sizeof(mat4), &translations[0], GL_STATIC_DRAW);
-            //glBindBuffer(GL_ARRAY_BUFFER, 0); 
+            // vertex colors
+            glEnableVertexAttribArray(1);	
+            glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(vec3), (void*)sizeof(vec3));
+
+            glBindVertexArray(0);
+
+            check_GL();
         }
 
 
@@ -536,10 +538,15 @@ namespace Blok::Render {
         // resize the rendering engine to a new output size
         void resize(int w, int h);
 
+
         // begin the rendering sequence
         void render_start();
-
+        
+        // render a mesh with a given transform
         void renderMesh(Mesh* mesh, mat4 T);
+
+        // render a 'debug' line, i.e. a 1px line with a given start & end point, with a color
+        void renderDebugLine(vec3 start, vec3 end, vec3 col={1, .4, .3});
 
         // render a string of text at a given screen location `pxy`
         void renderText(vec2 pxy, UIText* text, vec2 scalexy={1,1});
