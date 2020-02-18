@@ -2,7 +2,7 @@
 
 Blok is a simple 3D block-based game (similar to Minecraft) that is meant to be extensible, performant, and fun to play!
 
-~[Screen Shot 0](./screenshots/SS0.png)
+![Screen Shot 0](./screenshots/SS0.png)
 
 
 ## Building
