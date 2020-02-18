@@ -20,8 +20,8 @@ layout (location = 4) in vec3 aN;
 /* Instanced Inputs */
 
 // Instance values (block position in the world, and ID)
-layout (location = 5) in vec3 gBlockPos;
-layout (location = 6) in float gBlockID;
+//layout (location = 5) in vec3 gBlockPos;
+layout (location = 5) in float gBlockID;
 
 /* Fragment Shader Outputs */
 
@@ -41,7 +41,7 @@ uniform mat4 gPV;
 
 void main() {
     // calculate transformed position
-    fPos = gPV * vec4(aPos + gBlockPos, 1.0);
+    fPos = gPV * vec4(aPos, 1.0);
 
     // just send the UV over
     fUV = aUV;

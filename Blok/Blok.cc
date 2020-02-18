@@ -399,7 +399,7 @@ int main(int argc, char** argv) {
     client->gfx.renderer->pos = vec3(0, 14, -10);
 
     float speed = 40.0f;
-    client->gfx.renderer->pos = vec3(0, 100, 0);
+    client->gfx.renderer->pos = vec3(0, 80, 0);
 
 
     // create a statistics object
@@ -470,7 +470,7 @@ int main(int argc, char** argv) {
             double et = getTime();
 
             double dt = et - everyT;
-            blok_debug("[frame%i] fps: %.1lf, kchunks/s: %.3lf, mtris/f: %.3lf", client->N_frames, every / dt, stats.n_chunk_recalcs / (1e3 * stats.t_chunks), stats.n_tris / (1e6 * every));
+            blok_debug("[frame%i] fps: %.1lf, kchunks/s: %.3lf, ktris/f: %.3lf", client->N_frames, every / dt, stats.n_chunk_recalcs / (1e3 * stats.t_chunks), stats.n_tris / (1e3 * every));
 
             everyT = et;
 

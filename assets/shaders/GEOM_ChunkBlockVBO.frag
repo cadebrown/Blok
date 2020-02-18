@@ -46,7 +46,8 @@ uniform sampler2D texID3;
 void main() {
 
     // sample 'col' as the given block
-    vec4 col;
+    vec4 col = vec4(1, 0, 0, 1);
+    //col = texture(texID3, fUV);
 
     // check various constants
     // TODO: texture atlas

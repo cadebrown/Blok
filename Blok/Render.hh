@@ -7,6 +7,8 @@
 /* main Blok library */
 #include <Blok/Blok.hh>
 
+#include <algorithm>
+
 /* additional graphics library from GLM */
 #include <Blok/glm/gtx/transform.hpp>
 
@@ -271,6 +273,69 @@ namespace Blok::Render {
 
     };
 
+    // the vertex data for a chunk mesh
+    struct ChunkMeshVertex {
+        // position of the vertex in model space (x, y, z)
+        vec3 pos;
+
+        // the texture coordinates (u, v)
+        vec2 uv;
+
+        // the Tangent direction
+        vec3 T;
+        // the Bitangent direction
+        vec3 B;
+        // the Normal direction
+        vec3 N;
+
+
+        // the block ID at this vertex
+        float blockID;
+
+        // ambient occlusion?
+
+        ChunkMeshVertex(vec3 pos, vec2 uv, vec3 N, int blockID) {
+            this->pos = pos;
+            this->uv = uv;
+            this->N = N;
+            this->blockID = blockID;
+        }
+
+    };
+
+    // ChunkMesh - generate a mesh from a chunk
+    class ChunkMesh {
+        public:
+
+        // construct from a chunk
+        static ChunkMesh* fromChunk(Chunk* chunk);
+
+        // OpenGL handles to the Vertex Array Object, Vertex Buffer Object, and EBO
+        // for rendering, you only care about VAO, and then drawing triangles from it,
+        // which should have the data from 'vertices' and 'faces' in it
+        uint glVAO, glVBO, glEBO;
+
+        // list of verteices, in no particular order. They are indexed by 'faces' list
+        List<ChunkMeshVertex> vertices;
+
+        // list of all the faces, as triplets referring to indices in the 'vertices' list
+        List<Face> faces;
+
+        // recalculate the mesh
+        void update(Chunk* chunk);
+
+        // construct a mesh from a list of vertices and faces.
+        //   each face is a list of indexes into the vertices array, making up
+        //   triangles
+        ChunkMesh();
+
+    
+        // deconstruct/delete resources associated with a mesh
+        ~ChunkMesh();
+
+    };
+
+
 
     /* RENDERING PROGRAMS/CONSTRUCTS */
 
@@ -373,6 +438,12 @@ namespace Blok::Render {
 
         // various shaders
         Map<String, Shader*> shaders;
+
+        // chunk mesh objects
+        Map<Chunk*, ChunkMesh*> chunkMeshes;
+
+        // array of freely allocated ChunkMeshes
+        List<ChunkMesh*> chunkMeshPool;
 
         // the main font
         FontTexture* mainFont;

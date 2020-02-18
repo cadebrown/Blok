@@ -298,6 +298,16 @@ bool Client::frame() {
     dt = ctime - lastTime;
     lastTime = ctime;
 
+    if (dt > 1.0f/15.0f && N_frames > 5) {
+        // only print every so often
+        static double nextPrintTime = 0.0;
+        if (getTime() > nextPrintTime) {
+
+            blok_warn("Stutter detected!");
+            nextPrintTime = getTime() + 1.0;
+        }
+    }
+
     // see if the app should close or not
     if (glfwWindowShouldClose(gfx.window)) {
         return false;

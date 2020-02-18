@@ -108,6 +108,24 @@ void Renderer::render_end() {
     // keep track of how many chunks rendered
     stats.n_chunks = N_chunks;
 
+
+    // first, remove any rendering ChunkMeshes that are not being rendered
+
+    auto cmit = chunkMeshes.cbegin();
+    while (cmit != chunkMeshes.cend()) {
+        if (std::find(torender.begin(), torender.end(), cmit->first) == torender.end()) {
+            // if we didn't find it, remove it from our meshes
+            // TODO: use a chunkMesh pool?
+            //delete cmit->second;
+            // add back to the pool
+            chunkMeshPool.push_back(cmit->second);
+            //erase from the current chunk meshes
+            chunkMeshes.erase(cmit++);
+        } else {
+            cmit++;
+        }
+    }
+
     // first, make sure all hashes are up to date
     // NOTE: we seperate this into a loop before the main recalculation, so that
     //   we can also tell if any neightbors hashes have changed. Without this,
@@ -123,6 +141,7 @@ void Renderer::render_end() {
             num_rehashes++;
         }
     }
+
 
     for (int idx = 0; idx < N_chunks; ++idx) {
         // get the current item on the queue
@@ -173,20 +192,25 @@ void Renderer::render_end() {
 
         // check if the hash has stayed the same, and if so, try and skip the chunk update
         if (chunk->rcache.curHash == chunk->rcache.lastHash) {
+
+            if (chunkMeshes.find(chunk) != chunkMeshes.end()) {
             
-            // if the chunk's hash didn't change, make sure none of the neighbors have changed
-            if (cL == chunk->rcache.cL && cT == chunk->rcache.cT && cR == chunk->rcache.cR && cB == chunk->rcache.cB) {
-                
-                // make sure the neighors either don't exist (and so couldn't have changed), or the hash is the same
-                // if nothing has changed, we can skip this iteration of the for loop, because we don't need to recalculate the VBO
-                if (!cL || cL->rcache.curHash == cL->rcache.lastHash)
-                if (!cT || cT->rcache.curHash == cT->rcache.lastHash)
-                if (!cR || cR->rcache.curHash == cR->rcache.lastHash)
-                if (!cB || cB->rcache.curHash == cB->rcache.lastHash) {
-                    // skip ahead
-                    continue;
+                // if the chunk's hash didn't change, make sure none of the neighbors have changed
+                if (cL == chunk->rcache.cL && cT == chunk->rcache.cT && cR == chunk->rcache.cR && cB == chunk->rcache.cB) {
+                    
+                    // make sure the neighors either don't exist (and so couldn't have changed), or the hash is the same
+                    // if nothing has changed, we can skip this iteration of the for loop, because we don't need to recalculate the VBO
+                    if (!cL || cL->rcache.curHash == cL->rcache.lastHash)
+                    if (!cT || cT->rcache.curHash == cT->rcache.lastHash)
+                    if (!cR || cR->rcache.curHash == cR->rcache.lastHash)
+                    if (!cB || cB->rcache.curHash == cB->rcache.lastHash) {
+                        // skip ahead
+                        continue;
+                    }
                 }
+
             }
+
         }
 
         // else, update the 2D linked list structure, and recalculate the chunk geometry
@@ -197,8 +221,30 @@ void Renderer::render_end() {
         chunk->rcache.cR = cR;
         chunk->rcache.cB = cB;
 
+
+        // calculate the mesh
+
+        //if (chunkMeshes[chunk] != NULL) delete chunkMeshes[chunk];
+        if (chunkMeshes.find(chunk) == chunkMeshes.end()) {
+            // hasn't been created yet
+            if (chunkMeshPool.size() > 0) {
+                chunkMeshes[chunk] = chunkMeshPool[chunkMeshPool.size()-1];
+                chunkMeshPool.pop_back();
+                chunkMeshes[chunk]->update(chunk);
+            } else {
+                // create it
+                chunkMeshes[chunk] = ChunkMesh::fromChunk(chunk);
+            }
+
+        } else {
+            // it has changed, so update it
+            chunkMeshes[chunk]->update(chunk);
+        }
+
+        // recalculate it
+
         // recalculate the VBO (i.e. calculate visibility for the chunk)
-        chunk->calcVBO();
+        //chunk->calcVBO();
 
         // keep track of recalculations
         stats.n_chunk_recalcs++;
@@ -273,6 +319,64 @@ void Renderer::render_end() {
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/STONE.png")->glTex);
 
+    //glBindVertexArray(mymesh->glVAO);
+
+    for (int idx = 0; idx < N_chunks; ++idx) {
+        Chunk* chunk = torender[idx];
+        ChunkMesh* cm = chunkMeshes[chunk];
+
+        // bind the chunk mesh
+        glBindVertexArray(cm->glVAO);
+        glDrawElements(GL_TRIANGLES, cm->faces.size() * 3, GL_UNSIGNED_INT, 0);
+
+
+        stats.n_tris += cm->faces.size();
+
+    } 
+/*
+
+    glEnableVertexAttribArray(5);
+    glVertexAttribDivisor(5, 1);  
+
+    
+    // render the chunks, by using their list of blocks & IDs
+    for (int idx = 0; idx < N_chunks; ++idx) {
+        // just expand out the queue entry
+        Chunk* chunk = torender[idx];
+
+        glBindBuffer(GL_ARRAY_BUFFER, chunk->rcache.glVBO_blocks);
+        glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
+
+        glBindBuffer(GL_ARRAY_BUFFER, chunk->rcache.glVBO_ids);
+        glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
+
+        glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, chunk->rcache.renderBlocks.size());
+
+        stats.n_tris += mymesh->faces.size() * chunk->rcache.renderBlocks.size();
+    }
+*/
+
+    /*
+    // use our geometry shader
+    shaders["geometry"]->use();
+
+    // set up global matrices (i.e. the camera transform)
+    shaders["geometry"]->setMat4("gPV", gPV);
+
+    // now, set the diffuse texture for all blocks
+    // TODO: write a texture atlas
+    shaders["geometry"]->setInt("texID1", 2);
+    glActiveTexture(GL_TEXTURE2);
+    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT.png")->glTex);
+
+    shaders["geometry"]->setInt("texID2", 3);
+    glActiveTexture(GL_TEXTURE3);
+    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT_GRASS.png")->glTex);
+
+    shaders["geometry"]->setInt("texID3", 4);
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/STONE.png")->glTex);
+
     glBindVertexArray(mymesh->glVAO); 
 
     glEnableVertexAttribArray(5);
@@ -297,6 +401,8 @@ void Renderer::render_end() {
 
         stats.n_tris += mymesh->faces.size() * chunk->rcache.renderBlocks.size();
     }
+
+    */
 
     // // Render misc. meshes out
 

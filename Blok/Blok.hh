@@ -321,11 +321,8 @@ namespace Blok {
 
         } rcache;
 
-        // internal methods called by the rendering engine
-
         // calculate the glVBO_blocks used by the rendering engine
         void calcVBO();
-
 
         // construct an empty chunk, defaulting to all air blocks
         Chunk() {
@@ -340,7 +337,6 @@ namespace Blok {
 
             // assume there are no valid chunks to start off with
             rcache.cL = rcache.cT = rcache.cR = rcache.cB = NULL;
-
 
             // graphics init
             glGenBuffers(1, &rcache.glVBO_blocks);
@@ -361,6 +357,7 @@ namespace Blok {
 
             // remove OpenGL handle
             glDeleteBuffers(1, &rcache.glVBO_blocks);
+
         }
 
         // calculate the hash for the chunk
