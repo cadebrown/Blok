@@ -99,7 +99,7 @@ void Renderer::render_end() {
     List<Chunk*> torender = {};
     for (auto item : queue.chunks) {
         // TODO: perhaps filter/cull based on bounding boxes?
-        torender.push_back(item.second);
+        if (item.second != NULL) torender.push_back(item.second);
     }
 
     // capture the number of chunks we need to compute, for a for loop index
@@ -142,8 +142,13 @@ void Renderer::render_end() {
         }
     }
 
+    double time_on_chunks = 0.0;
 
-    for (int idx = 0; idx < N_chunks; ++idx) {
+    // only spend a small amount of time on chunk updates, if we pass the cap,
+    //   we will just handle it next time
+    // For now, it is 1.5 ms, and it will always at least compute 1 chunk per frame
+    for (int idx = 0; idx < N_chunks && time_on_chunks < 0.0015; ++idx) {
+        double stime = getTime();
         // get the current item on the queue
         Chunk* chunk = torender[idx];
         ChunkID cid = chunk->XZ;
@@ -221,7 +226,6 @@ void Renderer::render_end() {
         chunk->rcache.cR = cR;
         chunk->rcache.cB = cB;
 
-
         // calculate the mesh
 
         //if (chunkMeshes[chunk] != NULL) delete chunkMeshes[chunk];
@@ -237,7 +241,7 @@ void Renderer::render_end() {
             }
 
         } else {
-            // it has changed, so update it
+            // it has changed, but already existed, so update it
             chunkMeshes[chunk]->update(chunk);
         }
 
@@ -245,6 +249,8 @@ void Renderer::render_end() {
 
         // recalculate the VBO (i.e. calculate visibility for the chunk)
         //chunk->calcVBO();
+
+        time_on_chunks += getTime() - stime;
 
         // keep track of recalculations
         stats.n_chunk_recalcs++;
@@ -265,6 +271,8 @@ void Renderer::render_end() {
 
     // record the time it took
     stats.t_chunks = getTime() - stats.t_chunks;
+
+    if (stats.n_chunk_recalcs != 0) blok_trace("updated %i chunks in %.1lfms", (int)stats.n_chunk_recalcs, 1000.0 * stats.t_chunks);
 
     /* Now, actually render with OpenGL */
 
@@ -323,14 +331,18 @@ void Renderer::render_end() {
 
     for (int idx = 0; idx < N_chunks; ++idx) {
         Chunk* chunk = torender[idx];
-        ChunkMesh* cm = chunkMeshes[chunk];
+        if (chunkMeshes.find(chunk) != chunkMeshes.end()) {
+            // we've got a mesh ready to render
+            ChunkMesh* cm = chunkMeshes[chunk];
 
-        // bind the chunk mesh
-        glBindVertexArray(cm->glVAO);
-        glDrawElements(GL_TRIANGLES, cm->faces.size() * 3, GL_UNSIGNED_INT, 0);
+            // bind the chunk mesh
+            glBindVertexArray(cm->glVAO);
+            glDrawElements(GL_TRIANGLES, cm->faces.size() * 3, GL_UNSIGNED_INT, 0);
 
 
-        stats.n_tris += cm->faces.size();
+            stats.n_tris += cm->faces.size();
+
+        }
 
     } 
 /*

@@ -401,10 +401,8 @@ int main(int argc, char** argv) {
     float speed = 40.0f;
     client->gfx.renderer->pos = vec3(0, 80, 0);
 
-
     // create a statistics object
     Render::Renderer::Stats stats;
-
 
     // gathering statistics every so many frames
     int every = 100;

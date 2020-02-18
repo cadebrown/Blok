@@ -33,6 +33,10 @@ namespace Blok {
         // this is a map of all currently loaded chunks by the server
         Map<ChunkID, Chunk*> loaded;
 
+        // list of ChunkIDs that have been requested to load by the server
+        // none of these should be in 'loaded'
+        Set<ChunkID> chunkRequests;
+
         // allow for virtual deconstructors
         virtual ~Server() { }
 
@@ -45,6 +49,11 @@ namespace Blok {
         // get a chunk from the server, if it is already loaded. This will not attempt to load/generate the chunk
         // else, return NULL
         virtual Chunk* getChunkIfLoaded(ChunkID id) = 0;
+
+        // this virtual function allows the server to process chunk requests (i.e. load in chunks from a data-base,
+        //   generate them, etc) for a maximum amount of time
+        // it should return the actual number of requests processed
+        virtual int processChunkRequests(double maxTime) = 0;
 
         // attempt to cast a ray (in world space), up to 'dist', returning whether or not it hit something
         // In the case that it did hit something, also set `hitInfo` to the relevant data about the collision
@@ -71,6 +80,7 @@ namespace Blok {
 
         } stats;
 
+
         // the world generator that is currently being used to generate chunks
         WG::WG* worldGen;
 
@@ -83,12 +93,12 @@ namespace Blok {
             stats.n_chunks = 0;
             stats.t_chunks = 0.0;
         }
-        
-        // gets a chunk from the server, creating it if not yet created
+
+        // gets a chunk from the server, marking it for creation if it does not yet exist
         Chunk* getChunk(ChunkID id) {
             if (loaded.find(id) == loaded.end()) {
                 // the chunk was not found in the loaded chunks, so generate it now
-                double stime = getTime();
+                /*double stime = getTime();
                 Chunk* new_chunk = worldGen->getChunk(id);
                 stime = getTime() - stime;
                 if (new_chunk == NULL) {
@@ -98,11 +108,13 @@ namespace Blok {
                     stats.n_chunks++;
                     stats.t_chunks += stime;
                     return loaded[id] = new_chunk;
-                }
+                }*/
+                // just request this ChunkID, the server will generate/load it eventually
+                chunkRequests.insert(id);
+                return NULL;
             } else {
                 return loaded[id];
             }
-
         }
 
         // get a chunk from the server, if it is already loaded
@@ -113,6 +125,30 @@ namespace Blok {
             } else {
                 return loaded[id];
             }
+        }
+
+        // process the chunks
+        int processChunkRequests(double maxTime) {
+            int ct = 0;
+            double et = 0.0;
+            while (et < maxTime && chunkRequests.size() > 0) {
+                double st = getTime();
+
+                // now, process a single chunkID
+                ChunkID creq = *chunkRequests.begin();
+                chunkRequests.erase(chunkRequests.begin());
+
+                // now, actually compute it
+                Chunk* new_chunk = worldGen->getChunk(creq);
+
+                // upload it to loaded chunks
+                loaded[creq] = new_chunk;
+
+                // update vars
+                et += getTime() - st;
+                ct++;
+            }
+            return ct;
         }
 
         // raycast() should seek through all possible chunks, checking intersection along 'ray',

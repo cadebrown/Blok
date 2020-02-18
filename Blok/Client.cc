@@ -131,6 +131,7 @@ Client::~Client() {
 bool Client::frame() {
     dirtyClient = this;
 
+    // cap it at .1ms to avoid /0 errors, etc
     if (dt < .0001) dt = .0001;
 
     // amount (in radians) the pitch has to be within
@@ -161,7 +162,7 @@ bool Client::frame() {
     ChunkID rendid = { (int)(floor(gfx.renderer->pos.x / CHUNK_SIZE_Z)), (int)(floor(gfx.renderer->pos.z / CHUNK_SIZE_Z)) };
 
     // view distance in chunks
-    int N = 5;
+    int N = 16;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
@@ -180,6 +181,9 @@ bool Client::frame() {
 
         }
     }
+
+    // now, allow time for the server to do this (2.5 ms)
+    server->processChunkRequests(0.0025);
 
     // capture information about the hit
     RayHit hit;
@@ -284,9 +288,25 @@ bool Client::frame() {
     gfx.wasFocused = gfx.isFocused;
     gfx.isFocused = glfwGetWindowAttrib(gfx.window, GLFW_FOCUSED);
 
-    // calculate the mouse movement, setting to 0 if it was flicked to it
-    // this is to prevent large spikes in delta
-    input.mouseDelta = (N_frames < 3 || gfx.isFocused == false || gfx.wasFocused == false) ? glm::vec2(0.0f, 0.0f) : input.mouse - input.lastMouse;
+    // reset input state when it is focused
+    if (!gfx.isFocused) {
+        
+        // set all keys to not pressed
+        for (int i = 0; i < GLFW_KEY_LAST; ++i) {
+            input.keys[i] = false;
+        }
+
+        // say mouse delta moved 0 during these frames, since its not focused
+        input.mouseDelta = vec2(0);
+
+    } else {
+        // keep input.keys as they are
+
+        // calculate the mouse movement, setting to 0 if it was flicked to it
+        // this is to prevent large spikes in delta
+        input.mouseDelta = (N_frames < 3 || gfx.isFocused == false || gfx.wasFocused == false) ? vec2(0) : input.mouse - input.lastMouse;
+
+    }
 
     // count the current frame
     N_frames++;

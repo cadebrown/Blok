@@ -20,6 +20,7 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <set>
 
 /* GLM (matrix & vector library) */
 #include <Blok/glm/glm.hpp>
@@ -94,6 +95,11 @@ namespace Blok {
     // so calling things list is clearer when talking about 3D codes
     template<typename T>
     using List = std::vector<T>;
+
+    // define a set as a standard library set
+    // this should be it easy to test membership, and keep a unique list of things
+    template<typename T>
+    using Set = std::set<T>;
 
     // a template for a dictionary type, i.e. Map<String, int>
     // Just use the standard library's definition

@@ -1,7 +1,7 @@
 
 # declare our main executable for our game, with all source codes
 add_executable (Blok
-    # in-tree dependencies/generated code
+    # in-tree dependencies/generated code for the OpenGL loader
     gl3w/gl3w.c 
 
     # actual Blok code
@@ -15,4 +15,6 @@ add_executable (Blok
 )
 
 # link the libraries with all the dependency libraries
-target_link_libraries(Blok ${blok_deps})
+target_link_libraries(Blok 
+    ${BLOK_LIBS}
+)

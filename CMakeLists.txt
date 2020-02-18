@@ -18,54 +18,53 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
 # default release to -O3 for optimization
-set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-Ofast")
 
 # set variables that are needed
 set(BUILD_STATIC_LIB ON)
 
-# requirement: OpenGL configuration
+# requirement: OpenGL library
 find_package(OpenGL REQUIRED)
+find_package(glfw3 3.3 REQUIRED PATHS ${CMAKE_CURRENT_BINARY_DIR}/out)
 
-
-# run ./build_libs.sh to build these requirements
-set(GLFW_DIR ${CMAKE_CURRENT_BINARY_DIR}/glfw-3.3 CACHE STRING "where is glfw located?")
-set(ASSIMP_DIR ${CMAKE_CURRENT_BINARY_DIR}/assimp-4.1.0 CACHE STRING "where is assimp located?")
-set(PORTAUDIO_DIR ${CMAKE_CURRENT_BINARY_DIR}/portaudio CACHE STRING "where is portaudio located?")
-set(FREETYPE_DIR ${CMAKE_CURRENT_BINARY_DIR}/freetype-2.9 CACHE STRING "where is freetype located?")
-
-# output where these are located
-message("GLFW_DIR: " ${GLFW_DIR})
-message("ASSIMP_DIR: " ${ASSIMP_DIR})
-message("PORTAUDIO_DIR: " ${PORTAUDIO_DIR})
-message("FREETYPE_DIR: " ${FREETYPE_DIR})
-
-# set the variable 
-#set(blok_deps ${GLFW_DIR}/src/libglfw3.a ${ASSIMP_DIR}/lib/libassimp.a ${PORTAUDIO_DIR}/lib/.libs/libportaudio.a ${FREETYPE_DIR}/objs/.libs/libfreetype.a)
-set(blok_deps glfw3 assimp portaudio freetype dl m GL GLU Xrandr Xext X11 zlibstatic IrrXML asound jack pthread)
+# just debug it out
+message("OPENGL_LIBRARIES: " "${OPENGL_LIBRARIES}")
 
 # add these directories to search for
 link_directories(
-    ${CMAKE_CURRENT_BINARY_DIR}/prefix/lib
-
-    #${GLFW_DIR}/src
-    #${ASSIMP_DIR}/lib
-    #${PORTAUDIO_DIR}/lib/.libs
-    #${FREETYPE_DIR}/objs/.libs
+    ${CMAKE_CURRENT_BINARY_DIR}/out/lib
 )
 
 # include this like with -I
 include_directories(
+    # for blok headers
     ${CMAKE_CURRENT_SOURCE_DIR}
 
-    ${CMAKE_CURRENT_BINARY_DIR}/prefix/include
-    ${CMAKE_CURRENT_BINARY_DIR}/prefix/include/freetype2
+    # for our built binaries
+    ${CMAKE_CURRENT_BINARY_DIR}/out/include
+    ${CMAKE_CURRENT_BINARY_DIR}/out/include/freetype2
 
-    #${GLFW_DIR}/include
-    #${ASSIMP_DIR}/include
-    #${PORTAUDIO_DIR}/include
-    #${FREETYPE_DIR}/include
+    # include wherever OpenGL is installed at
+    ${OPENGL_INCLUDE_DIRS}
 )
 
-# build the executable
+
+# record all the libraries we need to link with for our application
+# TODO: Do I need Xrandr Xext ? 
+set(BLOK_LIBS 
+    # graphics libraries
+    glfw3 ${OPENGL_LIBRARIES} X11 
+    
+    # other dependencies we build
+    assimp portaudio freetype zlibstatic IrrXML
+
+    # audio backends
+    asound jack 
+    
+    # system dependencies
+    pthread dl m
+)
+
+# add our source directory
 add_subdirectory(Blok)
 
