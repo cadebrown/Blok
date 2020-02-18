@@ -1,10 +1,13 @@
-/* WG/Default.cc - implementation of the default world generator for Blok */
+/* WG/Default.cc - implementation of the default world generator for Blok 
+ *
+ * The default world generator is going to be the most expansive
+ * 
+ */
 
 // include the world generator protocol
 #include <Blok/WG.hh>
 
 namespace Blok::WG {
-
 
 // construct given seed
 DefaultWG::DefaultWG(uint32_t seed) {
@@ -22,6 +25,7 @@ DefaultWG::DefaultWG(uint32_t seed) {
     cavegen.addLayer(Random::Perlin(seed + 4, vec3(0.03, 0.09, 0.03), vec2(.6, .7), vec2(0.0, 1.0)));
 }
 
+// generate a single chunk
 Chunk* DefaultWG::getChunk(ChunkID id) {
 
     // create a new chunk pointer

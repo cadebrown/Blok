@@ -11,7 +11,7 @@ add_executable (Blok
     render/Texture.cc render/FontTexture.cc render/UIText.cc render/Mesh.cc render/ChunkMesh.cc render/Shader.cc render/Target.cc
 
     # world generation routines
-    WG/Default.cc
+    WG/Default.cc WG/Flat.cc
 )
 
 # link the libraries with all the dependency libraries

@@ -21,8 +21,8 @@ set(CMAKE_CXX_FLAGS "-Wall -Wextra")
 # debug releases should be compiled with -g
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
-# default release to -O3 for optimization
-set(CMAKE_CXX_FLAGS_RELEASE "-Ofast")
+# default release to -O3 for optimization, and -s for stripping the binary
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -s")
 
 # set variables that are needed
 set(BUILD_STATIC_LIB ON)
@@ -69,4 +69,3 @@ set(BLOK_LIBS
 
 # add our source directory
 add_subdirectory(Blok)
-

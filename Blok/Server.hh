@@ -88,6 +88,7 @@ namespace Blok {
         // For now, just create a default world generator
         LocalServer() {
             worldGen = new WG::DefaultWG(0);
+            //worldGen = new WG::FlatWG(0);
 
             // initialize statistics
             stats.n_chunks = 0;
@@ -97,19 +98,8 @@ namespace Blok {
         // gets a chunk from the server, marking it for creation if it does not yet exist
         Chunk* getChunk(ChunkID id) {
             if (loaded.find(id) == loaded.end()) {
-                // the chunk was not found in the loaded chunks, so generate it now
-                /*double stime = getTime();
-                Chunk* new_chunk = worldGen->getChunk(id);
-                stime = getTime() - stime;
-                if (new_chunk == NULL) {
-                    blok_warn("Error generating chunk <%d,%d>", id.X, id.Z);
-                    return NULL;
-                } else {
-                    stats.n_chunks++;
-                    stats.t_chunks += stime;
-                    return loaded[id] = new_chunk;
-                }*/
-                // just request this ChunkID, the server will generate/load it eventually
+
+                // just request this ChunkID, the server will generate/load it eventually, but for now return NULL
                 chunkRequests.insert(id);
                 return NULL;
             } else {

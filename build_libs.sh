@@ -35,22 +35,18 @@ if [ ! -f $TAR_GLFW ]; then
     echo "No 'glfw' tarfile"
     exit 1
 fi
-
 if [ ! -f $TAR_ASSIMP ]; then
     echo "No 'assimp' tarfile"
     exit 1
 fi
-
 if [ ! -f $TAR_PORTAUDIO ]; then
     echo "No 'portaudio' tarfile"
     exit 1
 fi
-
 if [ ! -f $TAR_ARCHIVE ]; then
     echo "No 'archive' tarfile"
     exit 1
 fi
-
 if [ ! -f $TAR_FREETYPE ]; then
     echo "No 'freetype' tarfile"
     exit 1
@@ -78,7 +74,7 @@ FREETYPE_DIR=$DEPDIR/freetype-*
 
 # build glfw
 cd $GLFW_DIR
-cmake . -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX -DBUILD_SHARED_LIBS=OFF \
+cmake . -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX -DBUILD_SHARED_LIBS=OFF \
     -DGLFW_BUILD_EXAMPLES=OFF -DGLFW_BUILD_TESTS=OFF -DGLFW_BUILD_DOCS=OFF && \
     make -j$JOBS && \
     make install || { echo "Compiling 'glfw' failed"; exit 1; }
@@ -88,7 +84,7 @@ cmake . -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX -DBUILD_SHARED_LIBS=OFF \
 
 # build assimp
 cd $ASSIMP_DIR
-cmake . -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
+cmake . -G "Unix Makefiles" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUILD_TYPE=Release \
     -DASSIMP_BUILD_ZLIB=ON -DASSIMP_BUILD_TESTS=OFF -DASSIMP_INSTALL_PDB=OFF -DASSIMP_NO_EXPORT=ON -DASSIMP_BUILD_ASSIMP_TOOLS=OFF \
     -DINJECT_DEBUG_POSTFIX=OFF -DASSIMP_BUILD_AMF_IMPORTER=OFF -DASSIMP_BUILD_AC_IMPORTER=OFF -DASSIMP_BUILD_ASE_IMPORTER=OFF \
     -DASSIMP_BUILD_ASSBIN_IMPORTER=OFF -DASSIMP_BUILD_ASSXML_IMPORTER=OFF -DASSIMP_BUILD_CSM_IMPORTER=OFF -DASSIMP_BUILD_HMP_IMPORTER=OFF \
