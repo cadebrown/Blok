@@ -110,8 +110,8 @@ void Renderer::render_end() {
 
 
     // first, remove any rendering ChunkMeshes that are not being rendered
-
     auto cmit = chunkMeshes.cbegin();
+
     while (cmit != chunkMeshes.cend()) {
         if (std::find(torender.begin(), torender.end(), cmit->first) == torender.end()) {
             // if we didn't find it, remove it from our meshes
@@ -144,10 +144,13 @@ void Renderer::render_end() {
 
     double time_on_chunks = 0.0;
 
+    // keep a list of those we actually updated
+    List<Chunk*> actuallyUpdated = {};
+
     // only spend a small amount of time on chunk updates, if we pass the cap,
     //   we will just handle it next time
-    // For now, it is 1.5 ms, and it will always at least compute 1 chunk per frame
-    for (int idx = 0; idx < N_chunks && time_on_chunks < 0.0015; ++idx) {
+    // For now, it is 2.5 ms, and it will always at least compute 2 chunk updates per frame
+    for (int idx = 0; idx < N_chunks && (stats.n_chunk_recalcs < 4 || time_on_chunks < 0.0025); ++idx) {
         double stime = getTime();
         // get the current item on the queue
         Chunk* chunk = torender[idx];
@@ -196,7 +199,7 @@ void Renderer::render_end() {
         cB = queue.chunks.find(oid) == queue.chunks.end() ? NULL : queue.chunks[oid];
 
         // check if the hash has stayed the same, and if so, try and skip the chunk update
-        if (chunk->rcache.curHash == chunk->rcache.lastHash) {
+        if (chunk->rcache.curHash != 0 && chunk->rcache.curHash == chunk->rcache.lastHash) {
 
             if (chunkMeshes.find(chunk) != chunkMeshes.end()) {
             
@@ -251,6 +254,10 @@ void Renderer::render_end() {
         //chunk->calcVBO();
 
         time_on_chunks += getTime() - stime;
+
+        // record it
+        actuallyUpdated.push_back(chunk);
+
 
         // keep track of recalculations
         stats.n_chunk_recalcs++;
@@ -335,13 +342,12 @@ void Renderer::render_end() {
             // we've got a mesh ready to render
             ChunkMesh* cm = chunkMeshes[chunk];
 
-            // bind the chunk mesh
+            // bind the chunk mesh (which also binds all the other properties with it)
             glBindVertexArray(cm->glVAO);
             glDrawElements(GL_TRIANGLES, cm->faces.size() * 3, GL_UNSIGNED_INT, 0);
 
 
             stats.n_tris += cm->faces.size();
-
         }
 
     } 

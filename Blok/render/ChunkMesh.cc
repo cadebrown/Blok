@@ -158,11 +158,9 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
 }
 void ChunkMesh::update(Chunk* chunk) {
 
+    // reset the variables here
     vertices = {};
     faces = {};
-
-    // temporary variable for the current block
-    BlockData cur;
 
     // iterate through all non-empty blocks
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
@@ -180,7 +178,6 @@ void ChunkMesh::update(Chunk* chunk) {
         vertices[i].pos += vec3(chunk->getWorldPos());
     }
 
-
     // now, store in the OpenGL objects
     glBindVertexArray(glVAO);
 
@@ -191,12 +188,12 @@ void ChunkMesh::update(Chunk* chunk) {
     // A great thing about structs is that their memory layout is sequential for all its items.
     // The effect is that we can simply pass a pointer to the struct and it translates perfectly to a vec3/2 array which
     // again translates to 3/2 floats which translates to a byte array.
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(ChunkMeshVertex), &vertices[0], GL_DYNAMIC_DRAW);  
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(ChunkMeshVertex), &vertices[0], GL_STATIC_DRAW);  
 
 
     // add the faces to the EBO
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, glEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * 3 * sizeof(int), &faces[0], GL_DYNAMIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * 3 * sizeof(int), &faces[0], GL_STATIC_DRAW);
 
 
     glBindVertexArray(0);
