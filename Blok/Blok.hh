@@ -1,6 +1,13 @@
 /* Blok.hh - main header file for the 'Blok' game. This file describes the basic 
- *   data structures
+ *   data structures, types, and interfaces for the entire game.
+ * 
+ * It also defines constants (like block ID's, etc)
  *
+ * 
+ * Other files to check out:
+ * 
+ *   * Render.hh - all the rendering engine-specific code is located here 
+ * 
  * @author: Cade Brown <brown.cade@gmail.com>
  */
 
@@ -9,23 +16,21 @@
 #ifndef BLOK_HH__
 #define BLOK_HH__
 
-
-/* C libraries */
+/* C standard libraries */
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
-/* C++ standard datatypes */
+/* C++ standard libraries */
 #include <vector>
 #include <string>
 #include <map>
 #include <set>
 
+
 /* GLM (matrix & vector library) */
 #include <Blok/glm/glm.hpp>
-#define GLM_ENABLE_EXPERIMENTAL
-#include <Blok/glm/gtx/hash.hpp>
 
 /* gl3w (OpenGL loader) */
 #include <Blok/gl3w/gl3w.h>
@@ -33,16 +38,12 @@
 /* GLFW (Window Library) */
 #include <GLFW/glfw3.h>
 
-
 /* freetype (FontLoading) */
 #include <ft2build.h>
 #include FT_FREETYPE_H
 
-
 /* PortAudio (Audio Input/Output Library) */
 #include "portaudio.h"
-// define this operator so that XZs can be used as keys
-bool operator<(const glm::ivec2 A, const glm::ivec2 B);
 
 
 namespace Blok {
@@ -472,7 +473,7 @@ namespace Blok {
         BlockData blockData;
 
 
-        RayHit(bool hit=false, float dist=0.0f, vec3 normal={0,0,0}, vec3 pos={0,0,0}, BlockData bockData={ID::AIR}) {
+        RayHit(bool hit=false, float dist=0.0f, vec3 normal={0,0,0}, vec3 pos={0,0,0}, BlockData blockData={ID::AIR}) {
             this->hit = hit;
             this->dist = dist;
             this->normal = normal;

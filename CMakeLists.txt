@@ -1,3 +1,7 @@
+# CMakeLists.txt - main build generator file for the Blok project,
+#   allows configuration for multiple machines, hopefully eventually it will
+#   be working for Linux, MacOS, and Windows
+
 cmake_minimum_required (VERSION 3.1)
 project (Blok)
 
@@ -26,7 +30,6 @@ set(BUILD_STATIC_LIB ON)
 # requirement: OpenGL library
 find_package(OpenGL REQUIRED)
 find_package(glfw3 3.3 REQUIRED PATHS ${CMAKE_CURRENT_BINARY_DIR}/out)
-
 # just debug it out
 message("OPENGL_LIBRARIES: " "${OPENGL_LIBRARIES}")
 
@@ -47,7 +50,6 @@ include_directories(
     # include wherever OpenGL is installed at
     ${OPENGL_INCLUDE_DIRS}
 )
-
 
 # record all the libraries we need to link with for our application
 # TODO: Do I need Xrandr Xext ? 

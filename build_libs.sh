@@ -4,8 +4,6 @@
 #  - cmake
 #  - make
 #  - c++/g++
-#  - 
-
 
 # first, ensure all the utilities are satisfied
 cmake --help > /dev/null || { echo "No 'cmake' found"; exit 1; }
@@ -25,7 +23,7 @@ JOBS=16
 PREFIX=$DEPDIR/out
 
 
-# glob for file names
+# glob for file names, get anmy matches
 TAR_GLFW=$TARDIR/glfw-*.tar.gz
 TAR_ASSIMP=$TARDIR/assimp-*.tar.gz
 TAR_PORTAUDIO=$TARDIR/pa_*.tar.gz
@@ -57,9 +55,6 @@ if [ ! -f $TAR_FREETYPE ]; then
     echo "No 'freetype' tarfile"
     exit 1
 fi
-
-
-
 
 # built them to the dep dir
 mkdir -p $DEPDIR
@@ -104,7 +99,6 @@ cmake . -DCMAKE_INSTALL_PREFIX:PATH=$PREFIX -DBUILD_SHARED_LIBS=OFF -DCMAKE_BUIL
     make install || { echo "Compiling 'assimp' failed"; exit 1; }
 #ASSIMP_SLIB=$PWD/lib/libassimp.a
 #strip --strip-debug $ASSIMP_SLIB
-
 
 # -*- AUTOMAKE/configurescript-based dependencies
 
