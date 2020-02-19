@@ -25,7 +25,7 @@ void Renderer::resize(int w, int h) {
     height = h;
 
     // else, reset some stuff like the render targets
-    targets["GEOM_ChunkMesh"]->resize(width, height);
+    targets["GEOM"]->resize(width, height);
     targets["ssq"]->resize(width, height);
 }
 
