@@ -11,6 +11,7 @@
 
 namespace Blok::Render {
 
+// the global cache that are loaded
 Map<String, Mesh*> Mesh::cache;
 
 
@@ -94,9 +95,11 @@ static void processNode(List<Mesh*>& meshes, aiNode *node, const aiScene *scene)
 Mesh* Mesh::loadConst(const String& fname) {
 
     if (cache.find(fname) != cache.end()) {
+        // it was already loaded, so return it
         return cache[fname];
     } else {
 
+        // iterate through all the resource/asset paths and try and find it
         for (const String& path : paths) {
 
             String newpath = path + "/" + fname;

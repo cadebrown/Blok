@@ -1,4 +1,10 @@
-/* Blok/Render.hh - Header file describing the rendering portion of the Blok library */
+/* Blok/Render.hh - Header file describing the rendering portion of the Blok library 
+ *
+ * Most objects here are just thin wrappers over OpenGL objects, with a much more friendly and intuitive interface
+ * They are also (mostly) designed to be drop-ins for your project! So, just copy the class definition, as well
+ *   as the `.cc` file located in `./render`, and maybe fix a few headers, and you have a good, portable implementation!
+ * 
+ */
 
 #pragma once
 #ifndef BLOK_RENDER_HH__
@@ -7,6 +13,7 @@
 /* main Blok library */
 #include <Blok/Blok.hh>
 
+/* std libraries */
 #include <algorithm>
 
 /* additional graphics library from GLM */
@@ -14,26 +21,29 @@
 
 namespace Blok::Render {
 
-
     /* TEXTURE/IMAGES */
 
     // define a datatype for storing an RGBA pixel value,
     // i.e. the main type used in image storage
     using pixel = glm::vec<4, uint8_t>;
 
+    // define a datatype for storing an RGBA pixel value, in floating point
+    // this is only really used for higher quality renderings/textures
+    using pixelf = glm::vec<4, float>;
 
-    // Texture - a 2D bitmap image
-    // NOTE: see file `Texture.cc` for the implementation
+    // Texture - a 2D bitmap image. Currently, no support for 3D. Maybe I will implement seperate classes,
+    //   Texture1D, Texture2D, etc...
+    // NOTE: see file `render/Texture.cc` for the implementation
+    // TODO: make textures updatable
     class Texture {
         public:
-
 
         // a cache of constant textures that have been loaded
         static Map<String, Texture*> cache;
 
         // load a new copy of the texture
         // NOTE: the caller is responsible for deleting the texture after it is done
-        //         , but it is allowed to modify the _pixels
+        //         , but it is allowed to modify the pixels array
         static Texture* loadCopy(const String& fname);
 
         // load a constant, shared reference of the texture
@@ -63,18 +73,18 @@ namespace Blok::Render {
         ~Texture();
 
         // return the index into the linear array 'pixels', given a row and column from the 
-        //   top left of the image
+        //   top left of the image. Defaults to the first element, i.e. the top-left most pixel
         int getIndex(int row=0, int col=0) const {
             return width * row + col;
         }
 
-        // get the pixel at the indicated coordinates
-        pixel get(int row, int col) const {
+        // get the pixel at the indicated coordinates, starting at the top left
+        pixel get(int row=0, int col=0) const {
             int idx = getIndex(row, col);
             return pixels[idx];
         }
 
-        // set the pixel at the given location to a value, defaulting to black
+        // set the pixel at the given location to a value, defaulting to black (i.e. clears it)
         void set(int row, int col, pixel pix=pixel(0, 0, 0, 0)) {
             int idx = getIndex(row, col);
             pixels[idx] = pix;
@@ -83,7 +93,8 @@ namespace Blok::Render {
     };
 
 
-    // FontTexture - create an asbtraction for a font-atlas
+    // FontTexture - an abstraction representing a renderable font's atlas of characters,
+    //   which each have allocated 2D regions on a larger texture map
     class FontTexture {
         public:
 
@@ -106,6 +117,7 @@ namespace Blok::Render {
         // array of pixels, in row major order
         pixel* pixels;
 
+
         // the OpenGL handle for the texture object
         uint glTex;
 
@@ -116,15 +128,17 @@ namespace Blok::Render {
         // define a structure describing the character info in the font
         struct CharInfo {
             
-            // the start and stop in the texture atlas (glTex)
+            // the start and stop in the texture atlas (glTex), in pixels
+            // image is found in: [start, stop)
             vec2i texStart, texStop;
 
-            // offset to top left of teh glitch
+            // offset to the top left of the character from the 'real' glyph,
+            // for rendering methods to align it properly
             vec2i bearing;
 
-            // how far to advance after drawing the character
+            // how far to advance after drawing the character, in horizontal units
+            // you will want to multiply by 64 for actual pixels
             int advance;
-
         };
 
         // list of start, stop positions for given characters in the main texture
@@ -149,7 +163,7 @@ namespace Blok::Render {
         }
 
         // get the pixel at the indicated coordinates
-        pixel get(int row, int col) const {
+        pixel get(int row=0, int col=0) const {
             int idx = getIndex(row, col);
             return pixels[idx];
         }
@@ -172,7 +186,7 @@ namespace Blok::Render {
         // what is the font to render
         FontTexture* font;
 
-        // the VAO and VBO objects for the screen quads
+        // the OpenGL handles to the VAO and VBO objects for the array of screen quads to render
         uint glVAO, glVBO;
 
         // number of triangles to render
@@ -199,11 +213,10 @@ namespace Blok::Render {
         // NOTE: set the text after this to actually see something
         UIText(FontTexture* font);
 
-
         // recalculate the VBO object
         void calcVBO();
-
     };
+
 
     /* MESH/GEOMETRY */
 
@@ -227,10 +240,10 @@ namespace Blok::Render {
         vec3 B;
         // the Normal direction
         vec3 N;
-
     };
 
     // Mesh: a 3D polygon, of the most generic variety. Implementation found in `render/Mesh.cc`
+    // TODO: make meshes updateable
     class Mesh {
         public:
 
@@ -247,9 +260,9 @@ namespace Blok::Render {
         //   modify any data
         static Mesh* loadConst(const String& path);
         
-        // return the constant screen space quad for opengl
+        // return the constant screen space quad for OpenGL, i.e. that will take up the entire screen by default
         static Mesh* getConstSSQ() {
-            return loadConst("resources/ssq.obj");
+            return loadConst("assets/obj/SSQ.obj");
         }
 
         // OpenGL handles to the Vertex Array Object, Vertex Buffer Object, and EBO
@@ -274,6 +287,7 @@ namespace Blok::Render {
     };
 
     // the vertex data for a chunk mesh
+    // We can store things like ambient occlusion here, block ID, etc to help with rendering
     struct ChunkMeshVertex {
         // position of the vertex in model space (x, y, z)
         vec3 pos;
@@ -293,7 +307,6 @@ namespace Blok::Render {
         float blockID;
 
         // ambient occlusion?
-
         ChunkMeshVertex(vec3 pos, vec2 uv, vec3 N, int blockID) {
             this->pos = pos;
             this->uv = uv;
@@ -303,12 +316,11 @@ namespace Blok::Render {
 
     };
 
-    // ChunkMesh - generate a mesh from a chunk
+    // ChunkMesh - generate a mesh from a chunk, with fast bindings to update it when it changes
+    //   by recalculating the visual geometry
+    // See implementation in `render/ChunkMesh.cc`
     class ChunkMesh {
         public:
-
-        // construct from a chunk
-        static ChunkMesh* fromChunk(Chunk* chunk);
 
         // OpenGL handles to the Vertex Array Object, Vertex Buffer Object, and EBO
         // for rendering, you only care about VAO, and then drawing triangles from it,
@@ -324,17 +336,14 @@ namespace Blok::Render {
         // recalculate the mesh
         void update(Chunk* chunk);
 
-        // construct a mesh from a list of vertices and faces.
-        //   each face is a list of indexes into the vertices array, making up
-        //   triangles
+        // construct a new chunk mesh, with nothing in it.
+        // call `update(chunk)` to cause a recalculation
         ChunkMesh();
 
-    
         // deconstruct/delete resources associated with a mesh
         ~ChunkMesh();
 
     };
-
 
 
     /* RENDERING PROGRAMS/CONSTRUCTS */
@@ -353,7 +362,7 @@ namespace Blok::Render {
         //   set* methods, and using the program normally
         static Shader* load(const String& vsFile, const String& fsFile);
 
-        // OpenGL program resource
+        // OpenGL handle to the shader's program object
         uint glProgram;
 
         // construct a shader given a file path for the vertex shader & fragment shader
@@ -369,7 +378,8 @@ namespace Blok::Render {
         // returns the uniform location of a given name
         int getUL(const String& name);
 
-        /* setting uniform values in the shader */
+        /* setting uniform values in the shader, note that you should first call `shader->use()`, so only call
+             these when it is the active shader */
 
         void setBool  (const String& name, bool value);
         void setInt   (const String& name, int value);
@@ -392,7 +402,7 @@ namespace Blok::Render {
 
 
     // Target : a target framebuffer that can be rendered to as an intermediate result, then
-    //   output to the screen or some other texture
+    //   output to the screen or some other texture or other target
     // This render Target can have multiple color attachments, so for example, for a deferred renderer,
     //   you can have 4 (position, color, normal, UV)
     // See more in `render/Target.cc`
@@ -424,19 +434,18 @@ namespace Blok::Render {
     // Renderer : a construct for rendering the entire game state, including chunks, entities, 
     //   GUIs, markup, etc
     // This should be the primary object calling OpenGL rendering commands
-    // Internally, 
+    // Internally, it uses a rendering pipeline that is abstracted from the client. So, you should just
+    //   call the `renderX()` methods, and trust that the internal rendering process makes it efficient (which it does ;) )
     class Renderer {
         public:
 
-        // the width/height (in pixels) of the output Target
+        // the width/height (in pixels) of the output target
         int width, height;
-
-        Mesh* mymesh;
 
         // various render targets, for different stages in processing
         Map<String, Target*> targets;
 
-        // various shaders
+        // various shaders that are used
         Map<String, Shader*> shaders;
 
         // chunk mesh objects
@@ -444,9 +453,6 @@ namespace Blok::Render {
 
         // array of freely allocated ChunkMeshes
         List<ChunkMesh*> chunkMeshPool;
-
-        // the main font
-        FontTexture* mainFont;
 
         // the default background color
         vec3 clearColor;
@@ -463,10 +469,8 @@ namespace Blok::Render {
         // the direction the renderer is looking
         vec3 forward;
 
-
         // the current matrices cache (projection, view)
         mat4 gP, gV;
-
 
 
         // the current queue of things that need to be rendered in the current frame
@@ -491,7 +495,8 @@ namespace Blok::Render {
 
         // struct describing debug drawing operations
         struct {
-            // VBO for a set of lines
+
+            // VAO/VBO for the debug lines
             uint glLinesVAO, glLinesVBO;
 
         } debug;
@@ -509,7 +514,6 @@ namespace Blok::Render {
             // number of chunk recalculations
             int n_chunk_recalcs;
 
-
             // number of triangles (total) send to OpenGL
             int n_tris;
 
@@ -520,7 +524,6 @@ namespace Blok::Render {
                 n_chunk_recalcs = 0;
                 n_tris = 0;
             }
-
 
         } stats;
 
@@ -543,16 +546,12 @@ namespace Blok::Render {
             // add a nice default color
             clearColor = vec3(0.1f, 0.1f, 0.1f);
 
-            //mainFont = FontTexture::loadConst("../resources/FORCED_SQUARE.ttf");
-            //mainFont = FontTexture::loadConst("../resources/VCR_MONO.ttf");
-            mainFont = FontTexture::loadConst("assets/fonts/UbuntuMonoPowerline.ttf");
-
             // construct our geometry pass
-            targets["geometry"] = new Target(width, height, 4);
+            targets["GEOM"] = new Target(width, height, 4);
             targets["ssq"] = new Target(width, height, 1);
 
-            // construct the main geometry pass
-            shaders["geometry"] = Shader::load("assets/shaders/GEOM_ChunkBlockVBO.vert", "assets/shaders/GEOM_ChunkBlockVBO.frag");
+            // get shaders for the geometry scene pass
+            shaders["GEOM_ChunkMesh"] = Shader::load("assets/shaders/GEOM_ChunkMesh.vert", "assets/shaders/GEOM_ChunkMesh.frag");
 
             shaders["geom_mesh"] = Shader::load("resources/geom.vs", "resources/geom.fs");
             shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
@@ -560,29 +559,19 @@ namespace Blok::Render {
             shaders["Reticle"] = Shader::load("assets/shaders/Reticle.vert", "assets/shaders/Reticle.frag");
             shaders["DebugLine"] = Shader::load("assets/shaders/DebugLine.vert", "assets/shaders/DebugLine.frag");
 
-            // construct basic mesh
-            /*mymesh = new Mesh({
-                { vec3(1.0f, 0.0f, 0.0f), vec2(0.0f, 0.0f) },
-                { vec3(0.0f, 1.0f, 0.0f), vec2(1.0f, 0.0f) },
-                { vec3(0.0f, 0.0f, 1.0f), vec2(0.0f, 1.0f) }
-            }, {
-                {0, 1, 2}
-            });*/
-            mymesh = Mesh::loadConst("assets/obj/UnitCube.obj");
-
-            // generate the debug line array
+            // allocate the debug lines
             glGenVertexArrays(1, &debug.glLinesVAO);
             glGenBuffers(1, &debug.glLinesVBO);
 
+            // now, set them up
             glBindVertexArray(debug.glLinesVAO);
-
             glBindBuffer(GL_ARRAY_BUFFER, debug.glLinesVBO);
 
-            // vertex positions
+            // add position vertex attribute
             glEnableVertexAttribArray(0);	
             glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(vec3), (void*)0);
 
-            // vertex colors
+            // add color vertex attribute
             glEnableVertexAttribArray(1);	
             glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 2 * sizeof(vec3), (void*)sizeof(vec3));
 
@@ -598,20 +587,32 @@ namespace Blok::Render {
             for (auto keyval : targets) {
                 delete keyval.second;
             }
+
+            // free our kept pools
+            for (auto cmesh : chunkMeshPool) {
+                delete cmesh;
+            }
+
+            for (auto keyval : chunkMeshes) {
+                // clear any existing chunk meshes
+                delete keyval.second;
+            }
+            chunkMeshPool.clear();
+
+            // remove/delete the debug lines variables
+            glDeleteVertexArrays(1, &debug.glLinesVAO);
+            glDeleteBuffers(1, &debug.glLinesVBO);
         }
 
         // get the final output target of the renderer
         Target* getOutputTarget() {
-            // for now, just output the geometry
-            return targets["geometry"];
+            // for now, just output the geometry pass
+            return targets["GEOM"];
         }
 
         // resize the rendering engine to a new output size
         void resize(int w, int h);
 
-
-        // begin the rendering sequence
-        void render_start();
         
         // render a mesh with a given transform
         void renderMesh(Mesh* mesh, mat4 T);
@@ -623,20 +624,11 @@ namespace Blok::Render {
         void renderText(vec2 pxy, UIText* text, vec2 scalexy={1,1});
 
         // request for the renderer to render a chunk of the world
-        // NOTE: must be between `render_start()` and `render_end()`!
         void renderChunk(ChunkID id, Chunk* chunk);
 
-        // finalize the rendering sequence
-        void render_end();
 
-
-
-        // render a single entity
-        //void renderEntity(Entity* entity);
-
-        // render an entire chunk
-        //void renderChunk(ChunkID id, Chunk* chunk);
-
+        // finalize, and render out the entire queue
+        void renderFrame();
 
 
     };

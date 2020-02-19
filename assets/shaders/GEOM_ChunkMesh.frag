@@ -1,9 +1,4 @@
 #version 330 core
-/* GEOM_ChunkBlockVBO.frag - fragment shader for the 'GEOM' pass, rendering Chunk's instanced array of blocks 
-
-
-*/
-
 
 /* Vertex Shader inputs */
 

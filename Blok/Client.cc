@@ -1,4 +1,9 @@
-/* Client.cc - implementation of the client side code */
+/* Client.cc - implementation of the client side code 
+ *
+ * Essentially, the client connects all parts of the application so it is usable by the player.
+ * The client handles input, graphics, communication, server handling, GUIs, etc
+ * 
+ */
 
 #include <Blok/Client.hh>
 
@@ -47,8 +52,6 @@ static void glfw_fbresize_callback(GLFWwindow* window, int width, int height) {
     glViewport(0, 0, width, height);
 }
 
-
-
 // construct a new client
 Client::Client(Server* server, int w, int h) {
 
@@ -77,6 +80,7 @@ Client::Client(Server* server, int w, int h) {
     // set it to focused
     glfwMakeContextCurrent(gfx.window);
     gfx.isFocused = true;
+
     // 1 = vsync, 0 = as fast as possible
     glfwSwapInterval(1); 
 
@@ -113,6 +117,9 @@ Client::Client(Server* server, int w, int h) {
 
     // just check the errors
     check_GL();
+
+    // add some information
+    blok_info("GFX Libs: OpenGL: %s, GLSL: %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 }
 
@@ -154,9 +161,6 @@ bool Client::frame() {
 
     // normalize it just to make sure
     gfx.renderer->forward = glm::normalize(gfx.renderer->forward);
-
-    // tell the renderer to begin accepting render commands
-    gfx.renderer->render_start();
 
     // get the current
     ChunkID rendid = { (int)(floor(gfx.renderer->pos.x / CHUNK_SIZE_Z)), (int)(floor(gfx.renderer->pos.z / CHUNK_SIZE_Z)) };
@@ -261,8 +265,8 @@ bool Client::frame() {
     uit->text = tmp;
     gfx.renderer->renderText({10, gfx.renderer->height-10}, uit);
 
-    // tell it we are done
-    gfx.renderer->render_end();
+    // tell it we are done, and that we can render a frame
+    gfx.renderer->renderFrame();
 
     // clear input
     for (int i = 0; i < GLFW_KEY_LAST; ++i) {
@@ -274,8 +278,7 @@ bool Client::frame() {
         input.lastMouseButtons[i] = input.mouseButtons[i];
     }
 
-    // update the frame
-    glfwSwapBuffers(gfx.window);
+    // update for events
     glfwPollEvents();
 
     // now, get the cursor position
@@ -327,6 +330,10 @@ bool Client::frame() {
             nextPrintTime = getTime() + 1.0;
         }
     }
+
+    // attempt to swap the buffers
+    glfwSwapBuffers(gfx.window);
+
 
     // see if the app should close or not
     if (glfwWindowShouldClose(gfx.window)) {

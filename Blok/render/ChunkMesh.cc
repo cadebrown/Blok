@@ -1,4 +1,8 @@
-/* ChunkMesh.cc - implementation of the ChunkMesh class */
+/* ChunkMesh.cc - implementation of the ChunkMesh class
+ *
+ * Essentially, this is a subset of meshes that can be generated from a chunk
+ * 
+ */
 
 // include rendering library
 #include <Blok/Render.hh>
@@ -28,10 +32,9 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
         doBot = true;
     }
 
-
     // check left & right faces
     if (x == CHUNK_SIZE_X-1) {
-        if (chunk->rcache.cR == NULL || chunk->rcache.cR->get(0, y, z).id == ID::AIR) {
+        if (chunk->rcache.cR != NULL && chunk->rcache.cR->get(0, y, z).id == ID::AIR) {
             doRig = true;
         }
     } else if (chunk->get(x+1, y, z).id == ID::AIR) {
@@ -39,7 +42,7 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
     }
 
     if (x == 0) {
-        if (chunk->rcache.cL == NULL || chunk->rcache.cL->get(CHUNK_SIZE_X-1, y, z).id == ID::AIR) {
+        if (chunk->rcache.cL != NULL && chunk->rcache.cL->get(CHUNK_SIZE_X-1, y, z).id == ID::AIR) {
             doLef = true;
         }
     } else if (chunk->get(x-1, y, z).id == ID::AIR) {
@@ -47,9 +50,9 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
     }
 
 
-    // check left & right faces
+    // check forward and back faces
     if (z == CHUNK_SIZE_Z-1) {
-        if (chunk->rcache.cT == NULL || chunk->rcache.cT->get(x, y, 0).id == ID::AIR) {
+        if (chunk->rcache.cT != NULL && chunk->rcache.cT->get(x, y, 0).id == ID::AIR) {
             doFor = true;
         }
     } else if (chunk->get(x, y, z+1).id == ID::AIR) {
@@ -57,23 +60,14 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
     }
 
     if (z == 0) {
-        if (chunk->rcache.cB == NULL || chunk->rcache.cB->get(x, y, CHUNK_SIZE_Z-1).id == ID::AIR) {
+        if (chunk->rcache.cB != NULL && chunk->rcache.cB->get(x, y, CHUNK_SIZE_Z-1).id == ID::AIR) {
             doBac = true;
         }
     } else if (chunk->get(x, y, z-1).id == ID::AIR) {
         doBac = true;
     }
 
-
-
-
-    /*} else if (x == 0) {
-        if (chunk->rcache.cL == NULL || chunk->rcache.cL->get(CHUNK_SIZE_X-1, y, z).id == ID::AIR) {
-            doRig = true;
-        }
-*/
-
-    // render various faces
+    // now, add them to the mesh, if they are visible
 
     if (doTop) {
         // we are on top, so always render the top face
@@ -153,16 +147,19 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
         faces.push_back({idx, idx+1, idx+2});
         faces.push_back({idx+1, idx+3, idx+2});
     }
-
+    // done with this face
 
 }
+
+// update the mesh from a given chunk data
 void ChunkMesh::update(Chunk* chunk) {
 
     // reset the variables here
     vertices = {};
     faces = {};
 
-    // iterate through all non-empty blocks
+    // iterate through all non-empty blocks, adding them
+    // TODO: maybe use the dirtyMin/Max to only update parts of the mesh?
     for (int x = 0; x < CHUNK_SIZE_X; ++x) {
         for (int z = 0; z < CHUNK_SIZE_Z; ++z) {
             for (int y = 0; y < CHUNK_SIZE_Y; ++y) {
@@ -173,7 +170,7 @@ void ChunkMesh::update(Chunk* chunk) {
         }
     }
 
-    // translate them
+    // translate them to real world positions
     for (int i = 0; i < vertices.size(); ++i) {
         vertices[i].pos += vec3(chunk->getWorldPos());
     }
@@ -190,23 +187,12 @@ void ChunkMesh::update(Chunk* chunk) {
     // again translates to 3/2 floats which translates to a byte array.
     glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(ChunkMeshVertex), &vertices[0], GL_STATIC_DRAW);  
 
-
     // add the faces to the EBO
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, glEBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * 3 * sizeof(int), &faces[0], GL_STATIC_DRAW);
 
-
+    // unbind this state
     glBindVertexArray(0);
-
-
-}
-
-ChunkMesh* ChunkMesh::fromChunk(Chunk* chunk) {
-
-    ChunkMesh* newcm = new ChunkMesh();
-    newcm->update(chunk);
-
-    return newcm;
 
 }
 
@@ -214,10 +200,6 @@ ChunkMesh* ChunkMesh::fromChunk(Chunk* chunk) {
 //   each face is a list of indexes into the vertices array, making up
 //   triangles
 ChunkMesh::ChunkMesh() {
-    
-    // just set them equal
-    //this->vertices = vertices;
-    //this->faces = faces;
 
     // create OpenGL handles for everything
     glGenVertexArrays(1, &glVAO);
@@ -255,7 +237,7 @@ ChunkMesh::ChunkMesh() {
     glEnableVertexAttribArray(5);	
     glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(ChunkMeshVertex), (void*)offsetof(ChunkMeshVertex, blockID));
 
-
+    // unbind state
     glBindVertexArray(0);
 }
 

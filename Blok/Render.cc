@@ -1,4 +1,16 @@
-/* Render.cc - main rendering engine code */
+/* Render.cc - main rendering engine code 
+ *
+ * Blok's rendering engine is split up into a few phases:
+ * 
+ *   1 (Collect): Chunks, meshes, text, etc are collected and entered into a queue/set datastructure
+ *     , or even sometimes, maps are used to instance render. These meshes enter into the 'scene geometry', representing real-world coordinates
+ *   2 (Group): Once all calls have been submitted, the idea is that the engine now has a collection of similar meshes with different
+ *     transforms/textures/etc to render, so now we can call instanced rendering shaders to speed up the process
+ *   3 (Render Pipeline): Now, the scene geometry is rendered in a few passes:
+ *     a. 'GEOM', a pass that just renders to a frame buffer with color, position, UVs, etc. Some ambient occlusion is baked in, but no dynamic lights
+ *     b. 'SHADOW_MAPS', a pass that renders out shadow maps for the sun, torches (maybe?), 
+ * 
+ */
 
 #include <Blok/Render.hh>
 
@@ -13,7 +25,7 @@ void Renderer::resize(int w, int h) {
     height = h;
 
     // else, reset some stuff like the render targets
-    targets["geometry"]->resize(width, height);
+    targets["GEOM_ChunkMesh"]->resize(width, height);
     targets["ssq"]->resize(width, height);
 }
 
@@ -36,6 +48,7 @@ void Renderer::renderMesh(Mesh* mesh, mat4 T) {
     queue.meshes[mesh].push_back(T);
 }
 
+// render some text
 void Renderer::renderText(vec2 pxy, UIText* text, vec2 scalexy) {
     if (queue.texts.find(text->font) == queue.texts.end()) {
         queue.texts[text->font] = {};
@@ -49,15 +62,8 @@ void Renderer::renderDebugLine(vec3 start, vec3 end, vec3 col) {
     queue.lines.push_back({start, col, end, col});
 }
 
-
-// begin the rendering sequence
-void Renderer::render_start() {
-
-
-}
-
 // finalize the rendering sequence
-void Renderer::render_end() {
+void Renderer::renderFrame() {
 
     // gather some statistics
 
@@ -88,12 +94,13 @@ void Renderer::render_end() {
         up // up direction (always (0, 1, 0))
     );
 
+    /* COLLECT CHUNKS */
+
 
     // the number of chunk re-hashes
     int num_rehashes = 0;
 
     // #1: Go through and filter all the chunks that were requested to be renderered
-
 
     // first, decompose the map into a linear list, for quick iteration
     List<Chunk*> torender = {};
@@ -148,7 +155,7 @@ void Renderer::render_end() {
     List<Chunk*> actuallyUpdated = {};
 
     // only spend a small amount of time on chunk updates, if we pass the cap,
-    //   we will just handle it next time
+    //   we will just handle it next frame
     // For now, it is 2.5 ms, and it will always at least compute 2 chunk updates per frame
     for (int idx = 0; idx < N_chunks && (stats.n_chunk_recalcs < 4 || time_on_chunks < 0.0025); ++idx) {
         double stime = getTime();
@@ -199,6 +206,10 @@ void Renderer::render_end() {
         cB = queue.chunks.find(oid) == queue.chunks.end() ? NULL : queue.chunks[oid];
 
         // check if the hash has stayed the same, and if so, try and skip the chunk update
+        // TODO: maybe add a specific range of values that have been modified. For example,
+        //   if an interior block is modified that won't affect neighboring chunks, don't update
+        //   or recalculate the neighbors
+        // This makes the queuing code more complex, but it shouldn't be too bad
         if (chunk->rcache.curHash != 0 && chunk->rcache.curHash == chunk->rcache.lastHash) {
 
             if (chunkMeshes.find(chunk) != chunkMeshes.end()) {
@@ -208,6 +219,8 @@ void Renderer::render_end() {
                     
                     // make sure the neighors either don't exist (and so couldn't have changed), or the hash is the same
                     // if nothing has changed, we can skip this iteration of the for loop, because we don't need to recalculate the VBO
+                    // TODO: just check if the dirtyMin/Max includes near the edge of the chunk
+                    //   if just interior blocks of the neighbors have changed, we don't need to recalculate our geometry
                     if (!cL || cL->rcache.curHash == cL->rcache.lastHash)
                     if (!cT || cT->rcache.curHash == cT->rcache.lastHash)
                     if (!cR || cR->rcache.curHash == cR->rcache.lastHash)
@@ -218,7 +231,6 @@ void Renderer::render_end() {
                 }
 
             }
-
         }
 
         // else, update the 2D linked list structure, and recalculate the chunk geometry
@@ -235,29 +247,23 @@ void Renderer::render_end() {
         if (chunkMeshes.find(chunk) == chunkMeshes.end()) {
             // hasn't been created yet
             if (chunkMeshPool.size() > 0) {
+                // take one from the pool
                 chunkMeshes[chunk] = chunkMeshPool[chunkMeshPool.size()-1];
                 chunkMeshPool.pop_back();
-                chunkMeshes[chunk]->update(chunk);
             } else {
-                // create it
-                chunkMeshes[chunk] = ChunkMesh::fromChunk(chunk);
+                // create it (will need to be updated, as it is currently blank)
+                chunkMeshes[chunk] = new ChunkMesh();
             }
-
-        } else {
-            // it has changed, but already existed, so update it
-            chunkMeshes[chunk]->update(chunk);
         }
 
-        // recalculate it
+        // recalculate it (or calculate it for the first time if it didn't exist)
+        chunkMeshes[chunk]->update(chunk);
 
-        // recalculate the VBO (i.e. calculate visibility for the chunk)
-        //chunk->calcVBO();
-
+        // record the time it took
         time_on_chunks += getTime() - stime;
 
         // record it
         actuallyUpdated.push_back(chunk);
-
 
         // keep track of recalculations
         stats.n_chunk_recalcs++;
@@ -279,12 +285,15 @@ void Renderer::render_end() {
     // record the time it took
     stats.t_chunks = getTime() - stats.t_chunks;
 
+    // output statistics
     if (stats.n_chunk_recalcs != 0) blok_trace("updated %i chunks in %.1lfms", (int)stats.n_chunk_recalcs, 1000.0 * stats.t_chunks);
+
+
 
     /* Now, actually render with OpenGL */
 
 
-    /* RENDER GEOMETRY PASS */
+    /* 'GEOM', RENDER GEOMETRY PASS */
 
     // enable depth testing, and make objects that are closer (i.e. have less distance) show up in front
     glEnable(GL_DEPTH_TEST); 
@@ -294,43 +303,40 @@ void Renderer::render_end() {
     glDisable(GL_BLEND);
 
     // enable face culling, and cull the faces that are facing away from us
+    // I'm using clockwise as the winding
     glEnable(GL_CULL_FACE);
+    glFrontFace(GL_CW);
     glCullFace(GL_BACK);
 
-    // use clockwise by our convention
-    glFrontFace(GL_CW);
-
     // draw to the 'geometry' target in the renderer
-    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targets["geometry"]->glFBO);
+    glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targets["GEOM"]->glFBO);
 
     // and draw to all the color attachments
-    glDrawBuffers(targets["geometry"]->glColorAttachments.size(), &targets["geometry"]->glColorAttachments[0]);
+    glDrawBuffers(targets["GEOM"]->glColorAttachments.size(), &targets["GEOM"]->glColorAttachments[0]);
 
-    // clear the render target
+    // clear the render target from last frame
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
     // just compute this once
     mat4 gPV = gP * gV;
 
-    // // Render chunks out
-
     // use our geometry shader
-    shaders["geometry"]->use();
+    shaders["GEOM_ChunkMesh"]->use();
 
     // set up global matrices (i.e. the camera transform)
-    shaders["geometry"]->setMat4("gPV", gPV);
+    shaders["GEOM_ChunkMesh"]->setMat4("gPV", gPV);
 
     // now, set the diffuse texture for all blocks
     // TODO: write a texture atlas
-    shaders["geometry"]->setInt("texID1", 2);
+    shaders["GEOM_ChunkMesh"]->setInt("texID1", 2);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT.png")->glTex);
 
-    shaders["geometry"]->setInt("texID2", 3);
+    shaders["GEOM_ChunkMesh"]->setInt("texID2", 3);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT_GRASS.png")->glTex);
 
-    shaders["geometry"]->setInt("texID3", 4);
+    shaders["GEOM_ChunkMesh"]->setInt("texID3", 4);
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/STONE.png")->glTex);
 
@@ -376,22 +382,22 @@ void Renderer::render_end() {
 
     /*
     // use our geometry shader
-    shaders["geometry"]->use();
+    shaders["GEOM_ChunkMesh"]->use();
 
     // set up global matrices (i.e. the camera transform)
-    shaders["geometry"]->setMat4("gPV", gPV);
+    shaders["GEOM_ChunkMesh"]->setMat4("gPV", gPV);
 
     // now, set the diffuse texture for all blocks
     // TODO: write a texture atlas
-    shaders["geometry"]->setInt("texID1", 2);
+    shaders["GEOM_ChunkMesh"]->setInt("texID1", 2);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT.png")->glTex);
 
-    shaders["geometry"]->setInt("texID2", 3);
+    shaders["GEOM_ChunkMesh"]->setInt("texID2", 3);
     glActiveTexture(GL_TEXTURE3);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT_GRASS.png")->glTex);
 
-    shaders["geometry"]->setInt("texID3", 4);
+    shaders["GEOM_ChunkMesh"]->setInt("texID3", 4);
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/STONE.png")->glTex);
 
@@ -547,11 +553,11 @@ void Renderer::render_end() {
     shaders["ssq"]->use();
 
     glActiveTexture(GL_TEXTURE4);
-    glBindTexture(GL_TEXTURE_2D, targets["geometry"]->glTex[0]);
+    glBindTexture(GL_TEXTURE_2D, targets["GEOM"]->glTex[0]);
     shaders["ssq"]->setInt("texSrc", 4);
 
     glActiveTexture(GL_TEXTURE5);
-    glBindTexture(GL_TEXTURE_2D, targets["geometry"]->glTex[1]);
+    glBindTexture(GL_TEXTURE_2D, targets["GEOM"]->glTex[1]);
     shaders["ssq"]->setInt("texPos", 5);
 
     // draw the quad

@@ -1,4 +1,8 @@
-/* FontTexture.cc - Blok's FontTexture class implementation */
+/* FontTexture.cc - Blok's FontTexture class implementation
+ * 
+ * Essentially, it is a big texture atlas, storing individual characters in it. These can be found out
+ * 
+ */
 
 #include <Blok/Render.hh>
 
@@ -16,6 +20,7 @@ FontTexture* FontTexture::loadConst(const String& path) {
     }
 }
 
+// attempt to add a single character to the fonttexture
 void FontTexture::addChar(char c) {
     if (charInfos.find(c) != charInfos.end()) {
         // it has already been added, so stop
@@ -200,12 +205,13 @@ FontTexture::FontTexture(const String& fname) {
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
 
-    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
+    // anistropic filtering?
     /*
+    //glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR_MIPMAP_NEAREST);
     GLfloat largest_supported_anisotropy; 
     glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &largest_supported_anisotropy); 
     glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAX_ANISOTROPY, largest_supported_anisotropy);
-*/
+    */
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
     //glGenerateMipmap(GL_TEXTURE_2D); 
 

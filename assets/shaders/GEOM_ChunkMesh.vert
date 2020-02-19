@@ -1,8 +1,4 @@
 #version 330 core
-/* GEOM_ChunkBlockVBO.vert - vertex shader for the 'GEOM' pass, rendering Chunk's instanced array of blocks 
-
-
-*/
 
 /* VAO/VBO Inputs */
 

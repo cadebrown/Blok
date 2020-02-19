@@ -1,4 +1,4 @@
-/* Blok.cc - the implementation for the general library API */
+/* Blok.cc - the startup methods, and library initialization */
 
 #include "Blok/Blok.hh"
 
@@ -19,40 +19,22 @@
 #define RED    "\033[31m"
 #define YELLOW "\033[33m"
 
-/* MISC */
-
 
 namespace Blok {
-
-
-/* consants */
 
 
 // global freetype library
 FT_Library ftlib;
 
+// the map of block IDs to their properties
 Map<ID, BlockProperties*> BlockProperties::all;
 
 
-/* oeprator overloads */
-
-bool operator<(ChunkID A, ChunkID B) {
-    if (A.X == B.X) return A.Z > B.Z;
-    else return A.X > B.X;
-}
-
-ChunkID operator+(ChunkID A, ChunkID B) {
-    return ChunkID(A.X+B.X, A.Z+B.Z);
-}
-ChunkID operator-(ChunkID A, ChunkID B) {
-    return ChunkID(A.X-B.X, A.Z-B.Z);
-
-}
 
 /* LOGGING */
 
-// current logging level
-static LogLevel curLevel = LogLevel::DEBUG;
+// current logging level (default to just 'info')
+static LogLevel curLevel = LogLevel::INFO;
 
 // level names to prevent
 static const char* levelNames[] = {
@@ -88,7 +70,7 @@ void log_internal(LogLevel level, const char *file, int line, const char* fmt, .
     // print a header with the level name
     fprintf(stderr, BOLD "%s" RESET ": ", levelNames[level]);
 
-    // call the vfprintf
+    // call the vfprintf with the user's arguments
     va_list args;
     va_start(args, fmt);
 
@@ -122,10 +104,10 @@ void log_internal(LogLevel level, const char *file, int line, const char* fmt, .
 
 /* MISC FUNCTIONS */
 
-// get the current time (in seconds) since Blok has been initialized,
+// get the current time (in seconds) since startup,
 //   i.e. the relative wall time
 double getTime() {
-    // get the start time as a static variable
+    // get the start time as a static variable, so it is constant
     static auto start_time = std::chrono::high_resolution_clock::now();
     auto current_time = std::chrono::high_resolution_clock::now();
 
@@ -168,7 +150,6 @@ static String GL_getErrorString(GLenum err) {
     }
 }
 
-
 // check/handle any OpenGL errors, returning true if there were errors,
 //   false if there were none
 bool check_GL() {
@@ -194,7 +175,9 @@ bool check_GL() {
 
 /* INITIALIZATION ROUTINES */
 
-// initialize the place to look for everything:
+// initialize the place to look for everything (i.e. shaders/models/etc)
+// typically, those paths start with a `assets/` subfolder, so the full path would be:
+// $PATH[i] + "/" + $RESOURCE
 List<String> paths = { ".", ".." };
 
 // initialize everyting in Blok
@@ -227,19 +210,19 @@ bool initAll() {
     // reset the GLFW time
     glfwSetTime(0.0);
 
-    // do some error checks
-    if (check_GL()) return false;
-
-
+    // initialize FreeType (FT) library for font loading & drawing
     if (FT_Init_FreeType(&ftlib)) {
         blok_error("Failed to initialize FreeType!");
         return false;
     }
 
-    
-    // output some information
-    blok_info("Blok initialized successfully!");
 
+    // do some error checks
+    if (check_GL()) {
+        blok_error("Failed to initialize: OpenGL Error Encountered!");
+        return false;
+    }
+    
     // now, set up block info
 
     #define ADDBLOCK(_id, _idname, _name) { \
@@ -248,10 +231,16 @@ bool initAll() {
         BlockProperties::all[_id]->name = _name; \
     }
 
+
+    /* BUILT IN BLOCKS */
+
     ADDBLOCK(ID::AIR, "AIR", "Air");
     ADDBLOCK(ID::DIRT, "DIRT", "Dirt");
     ADDBLOCK(ID::DIRT_GRASS, "DIRT_GRASS", "Dirt (Grass)");
     ADDBLOCK(ID::STONE, "STONE", "Stone");
+
+
+    /* TRACE/DEBUG INFORMATION */
 
     blok_trace("sizeof(BlockData)==%ib", (int)sizeof(BlockData));
     blok_trace("sizeof(ID)==%ib", (int)sizeof(ID));
@@ -259,9 +248,10 @@ bool initAll() {
     blok_trace("Chunk size: %ix%ix%i (%i blocks) (%ib, %ikb)", CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z, CHUNK_NUM_BLOCKS, cb, cb / 1024);
 
 
+    // give a helpful message
+    blok_info("Blok %i.%i.%i%s initialized successfully!", BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "");
 
-
-
+    // success
     return true;
 }
 
@@ -392,8 +382,6 @@ int main(int argc, char** argv) {
     LocalServer* server = new LocalServer();
 
     Client* client = new Client(server, 800, 600);
-
-    blok_info("Initialized with: OpenGL: %s, GLSL: %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 
     // just update
     client->gfx.renderer->pos = vec3(0, 14, -10);

@@ -22,7 +22,7 @@ DefaultWG::DefaultWG(uint32_t seed) {
     pmgen.addLayer(Random::Perlin(seed + 3, vec3(0.007, .03, 0.0), vec2(0.7, 0.73), vec2(0, -40)));
 
     cavegen = Random::PerlinMux();
-    cavegen.addLayer(Random::Perlin(seed + 4, vec3(0.03, 0.09, 0.03), vec2(.6, .7), vec2(0.0, 1.0)));
+    cavegen.addLayer(Random::Perlin(seed + 4, vec3(0.025, 0.08, 0.025), vec2(.6, .7), vec2(0.0, 1.0)));
 }
 
 // generate a single chunk
