@@ -8,8 +8,6 @@
  * World Generators can have internal state (i.e. caching, list of worms for cave generation, 
  *   tree generation, etc)
  * 
- * 
- * 
  */
 
 #pragma once
