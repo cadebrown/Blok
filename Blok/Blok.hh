@@ -342,14 +342,15 @@ namespace Blok {
 
         // free all resources in the chunk
         ~Chunk() {
+            
             // free our allocated array
-            delete[] this->blocks;
+            if (this->blocks != NULL) delete[] this->blocks;
 
             // remove our neighbor's references
-            rcache.cR->rcache.cL = NULL;
-            rcache.cT->rcache.cB = NULL;
-            rcache.cL->rcache.cR = NULL;
-            rcache.cB->rcache.cT = NULL;
+            if (rcache.cR != NULL) rcache.cR->rcache.cL = NULL;
+            if (rcache.cT != NULL) rcache.cT->rcache.cB = NULL;
+            if (rcache.cL != NULL) rcache.cL->rcache.cR = NULL;
+            if (rcache.cB != NULL) rcache.cB->rcache.cT = NULL;
         }
 
         // calculate the hash for the chunk

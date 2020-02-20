@@ -274,7 +274,7 @@ void runTests() {
     uint32_t tmp = 0;
 
     printf(" -*- Blok v%i.%i.%i %s Tests -*-\n", BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "");
-    printf(" -*- 1: Random::XorShift::getU32 (N=%i) -*-\n", N);
+    printf("\n -*- 1: Random::XorShift::getU32 (N=%i) -*-\n", N);
     Random::XorShift rnd = Random::XorShift(0);
 
     double st = getTime();
@@ -288,9 +288,9 @@ void runTests() {
     printf("\n");
     st = getTime() - st;
 
-    printf("Speed %lfMsmp/sec\n", 1e-6 * N / st);
+    printf("Speed %.2lfMsmp/sec\n", 1e-6 * N / st);
 
-    printf(" -*- 2: Random::Perlin::noise1d (N=%i) -*-\n", N);
+    printf("\n -*- 2: Random::Perlin::noise1d (N=%i) -*-\n", N);
 
     Random::Perlin prnd = Random::Perlin(0);
 
@@ -305,10 +305,10 @@ void runTests() {
     printf("\n");
     st = getTime() - st;
 
-    printf("Speed %lfMsmp/sec\n", 1e-6 * N / st);
+    printf("Speed %.2lfMsmp/sec\n", 1e-6 * N / st);
 
 
-    printf(" -*- 3: Random::Perlin::noise2d (N=%i,M=%i) -*-\n", N / 1000, 1000);
+    printf("\n -*- 3: Random::Perlin::noise2d (N=%i,M=%i) -*-\n", N / 1000, 1000);
 
     st = getTime();
     int ct = 0;
@@ -327,7 +327,47 @@ void runTests() {
     printf("\n");
     st = getTime() - st;
 
-    printf("Speed %lfMsmp/sec\n", 1e-6 * N / st);
+    printf("Speed %.2lfMsmp/sec\n", 1e-6 * N / st);
+
+    printf("\n -*- 4: Raycasts (N=%i) -*-\n", N/100);
+
+    // construct a new server
+    Server* server = new LocalServer();
+
+
+    int ch_N = 4;
+    // load some chunks around spawn
+    for (int X = -ch_N; X <= ch_N; ++X) {
+        for (int Z = -ch_N; Z <= ch_N; ++Z) {
+            server->getChunk({X, Z});
+        }
+    }
+
+    // make sure they are all loaded
+    while (server->processChunkRequests(1.0) > 0) ;
+
+    int hits = 0;
+
+    st = getTime();
+    // now, perform random raycasts
+    for (int i = 0; i < N/100; ++i) {
+        Ray ray;
+        ray.orig = vec3(ch_N * CHUNK_SIZE_X * (2 * rnd.getF() - 1) / 2, CHUNK_SIZE_Y * rnd.getF() / 2, ch_N * CHUNK_SIZE_Z * (2 * rnd.getF() - 1) / 2);
+        ray.dir = vec3(rnd.getF() * 2 - 1, rnd.getF() * 2 - 1, rnd.getF() * 2 - 1);
+        if (ray.dir == vec3(0)) ray.dir = vec3(0, -1, 0);
+        ray.dir = glm::normalize(ray.dir);
+        RayHit hit;
+        server->raycastBlock(ray, 16.0, hit);
+        if (hit.hit) hits++;
+    }
+
+    st = getTime() - st;
+
+    printf("Raycasts: %i hits (%%%i) %.2lfkcasts/sec\n", hits, 100 * hits / (N / 100), (N / 100.0) / (1000.0 * st));
+
+    delete server;
+    
+
 
 }
 
@@ -339,6 +379,9 @@ int main(int argc, char** argv) {
 
     // our option
     int opt;
+
+    // try and initialize blok
+    if (!initAll()) return -1;
 
     // parse arguments 
     while ((opt = getopt(argc, argv, "Tvh")) != -1) {
@@ -374,9 +417,6 @@ int main(int argc, char** argv) {
 
         optind++;
     }
-
-    // try and initialize blok
-    if (!initAll()) return -1;
 
     // create a local server
     LocalServer* server = new LocalServer();
@@ -455,8 +495,12 @@ int main(int argc, char** argv) {
         if (client->N_frames % every == 0) {
             double et = getTime();
 
+            const char* triSuf = stats.n_tris < 10000 ? "" : stats.n_tris < 10000000 ? "k" : "m";
+            
+            int tris = stats.n_tris < 10000 ? stats.n_tris : stats.n_tris < 10000000 ? stats.n_tris / 1000 : stats.n_tris / 1000000;
+
             double dt = et - everyT;
-            blok_debug("[frame%i] fps: %.1lf, kchunks/s: %.3lf, ktris/f: %.3lf", client->N_frames, every / dt, stats.n_chunk_recalcs / (1e3 * stats.t_chunks), stats.n_tris / (1e3 * every));
+            blok_debug("[frame%i] fps: %.1lf, ms/chunk: %.3lf, tris: %.3lf%s", client->N_frames, every / dt, (1e3 * stats.t_chunks) / stats.n_chunk_recalcs, tris, triSuf);
 
             everyT = et;
 
@@ -466,6 +510,10 @@ int main(int argc, char** argv) {
         }
 
     } 
+
+    // clean up
+    delete client;
+    delete server;
 
 
     return 0;

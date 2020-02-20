@@ -56,6 +56,8 @@ bool LocalServer::raycastBlock(Ray ray, float maxDist, RayHit& hitInfo) {
     // keep trying, break inside if there's a problem
     while (true) {
         
+        if (glm::dot(ray.orig - xyz, ray.orig - xyz) > (maxDist + 1) * (maxDist + 1)) break;
+
         // get block coordinates
         vec3i xyz_i = vec3i(glm::floor(xyz));
 
@@ -83,7 +85,7 @@ bool LocalServer::raycastBlock(Ray ray, float maxDist, RayHit& hitInfo) {
             //dirtyClient->gfx.renderer->renderMesh(Render::Mesh::loadConst("assets/obj/Sphere.obj"), glm::translate(xyz + vec3(0.5)) * glm::scale(vec3(0.3)));
 
             // probe the block, and check if it is not air
-            if ((hitInfo.blockData = cc->get(local.x, local.y, local.z)).id != ID::AIR) {
+            if (local.y >= 0 && local.y < CHUNK_SIZE_Y && (hitInfo.blockData = cc->get(local.x, local.y, local.z)).id != ID::AIR) {
                 // obviously, we've hit
                 hitInfo.hit = true;
 
@@ -139,11 +141,14 @@ bool LocalServer::raycastBlock(Ray ray, float maxDist, RayHit& hitInfo) {
                 hitInfo.normal = { 0, 0, -step_xyz.z };
             }
         }
+
+
     }
     
     // make sure these 2 variables are set
     hitInfo.blockData.id = ID::AIR;
     hitInfo.hit = false;
+
 
     // we didn't hit anything
     return false;

@@ -334,7 +334,6 @@ bool Client::frame() {
     // attempt to swap the buffers
     glfwSwapBuffers(gfx.window);
 
-
     // see if the app should close or not
     if (glfwWindowShouldClose(gfx.window)) {
         return false;

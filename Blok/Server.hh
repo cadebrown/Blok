@@ -38,7 +38,9 @@ namespace Blok {
         Set<ChunkID> chunkRequests;
 
         // allow for virtual deconstructors
-        virtual ~Server() { }
+        virtual ~Server() { 
+
+        }
 
         // getChunk should return a chunk by an ID, possibly generating it if required
         // NOTE: This may return NULL for some networked servers, so be sure and check if its NULL!
@@ -93,6 +95,21 @@ namespace Blok {
             // initialize statistics
             stats.n_chunks = 0;
             stats.t_chunks = 0.0;
+        }
+
+        // destroy server & its resources
+        ~LocalServer() {
+            // remove our generator
+            delete worldGen;
+
+
+            // delete all loaded chunks
+            for (auto& entry : loaded) {
+                delete entry.second;
+            }
+
+
+
         }
 
         // gets a chunk from the server, marking it for creation if it does not yet exist
