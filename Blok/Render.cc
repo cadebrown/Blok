@@ -94,8 +94,8 @@ void Renderer::renderFrame() {
         up // up direction (always (0, 1, 0))
     );
 
-    /* COLLECT CHUNKS */
 
+    /* COLLECT CHUNKS */
 
     // the number of chunk re-hashes
     int num_rehashes = 0;
@@ -115,9 +115,9 @@ void Renderer::renderFrame() {
     // keep track of how many chunks rendered
     stats.n_chunks = N_chunks;
 
-
     // first, remove any rendering ChunkMeshes that are not being rendered
     auto cmit = chunkMeshes.cbegin();
+
 
     while (cmit != chunkMeshes.cend()) {
         if (std::find(torender.begin(), torender.end(), cmit->first) == torender.end()) {
@@ -126,12 +126,14 @@ void Renderer::renderFrame() {
             //delete cmit->second;
             // add back to the pool
             chunkMeshPool.push_back(cmit->second);
+
             //erase from the current chunk meshes
             chunkMeshes.erase(cmit++);
         } else {
             cmit++;
         }
     }
+
 
     // first, make sure all hashes are up to date
     // NOTE: we seperate this into a loop before the main recalculation, so that
@@ -149,42 +151,14 @@ void Renderer::renderFrame() {
         }
     }
 
-    double time_on_chunks = 0.0;
 
-    // keep a list of those we actually updated
-    List<Chunk*> actuallyUpdated = {};
-
-    // only spend a small amount of time on chunk updates, if we pass the cap,
-    //   we will just handle it next frame
-    // For now, it is 2.5 ms, and it will always at least compute 2 chunk updates per frame
-    for (int idx = 0; idx < N_chunks && (stats.n_chunk_recalcs < 4 || time_on_chunks < 0.0025); ++idx) {
+    for (int idx = 0; idx < N_chunks; ++idx) {
         double stime = getTime();
         // get the current item on the queue
         Chunk* chunk = torender[idx];
         ChunkID cid = chunk->XZ;
 
-        // the hash should already be up-to-date at this point
-
-        // view the chunk as top down, with +X being right, +Z being up, etc
-        // like so:
-
-        // +-----+-----+-----+
-        // |     |  T  |     |
-        // |     |     |     |
-        // +-----+-----+-----+
-        // |  L  | cur |  R  |
-        // |     |     |     |
-        // +-----+-----+-----+
-        // |     |  B  |     |
-        // |     |     |     |
-        // +-----+-----+-----+
-        //
-        // (Z)
-        //  ^
-        //  + > (X)
-        //
-
-        // get the neighbors for the following directions:
+    
         // left, top, right, bottom chunks (see above diagram)
         // if NULL then that neighbor chunk is not currently being rendered
         Chunk *cL, *cT, *cR, *cB;
@@ -241,33 +215,42 @@ void Renderer::renderFrame() {
         chunk->rcache.cR = cR;
         chunk->rcache.cB = cB;
 
-        // calculate the mesh
+        // the hash should already be up-to-date at this point
 
-        //if (chunkMeshes[chunk] != NULL) delete chunkMeshes[chunk];
-        if (chunkMeshes.find(chunk) == chunkMeshes.end()) {
-            // hasn't been created yet
-            if (chunkMeshPool.size() > 0) {
-                // take one from the pool
-                chunkMeshes[chunk] = chunkMeshPool[chunkMeshPool.size()-1];
-                chunkMeshPool.pop_back();
-            } else {
-                // create it (will need to be updated, as it is currently blank)
-                chunkMeshes[chunk] = new ChunkMesh();
-            }
+        // otherwise, we need to recalculate it
+        chunkMeshRequests.insert(chunk);
+        
+    }
+
+
+    double stime_cu = getTime();
+    // take one off 
+    int ct = 0;
+    while (chunkMeshRequests.size() > 0 && getTime() - stime_cu < 0.005) {
+        auto cmit = chunkMeshRequests.begin();
+
+        ChunkMesh* newcm = NULL;
+        if (chunkMeshes.find(*cmit) != chunkMeshes.end()) {
+            // first try and reuse
+            newcm = chunkMeshes[*cmit];
+
+        } else if (chunkMeshPool.size() == 0) {
+            //blok_trace("new ChunkMesh");
+            newcm = new ChunkMesh();
+            chunkMeshes[*cmit] = newcm;
+        } else {
+            newcm = chunkMeshPool.back();
+            chunkMeshPool.pop_back();
+            chunkMeshes[*cmit] = newcm;
         }
 
-        // recalculate it (or calculate it for the first time if it didn't exist)
-        chunkMeshes[chunk]->update(chunk);
+        // calculate the update
+        newcm->update(*cmit);
 
-        // record the time it took
-        time_on_chunks += getTime() - stime;
+        chunkMeshRequests.erase(cmit);
 
-        // record it
-        actuallyUpdated.push_back(chunk);
-
-        // keep track of recalculations
-        stats.n_chunk_recalcs++;
     }
+
 
     // now, reset the Chunk variables, mark them as rendered
     //   and update their last render hash to their current, for next time
@@ -286,11 +269,20 @@ void Renderer::renderFrame() {
     stats.t_chunks = getTime() - stats.t_chunks;
 
     // output statistics
-    if (stats.n_chunk_recalcs != 0) blok_trace("updated %i chunks in %.1lfms", (int)stats.n_chunk_recalcs, 1000.0 * stats.t_chunks);
+    //if (stats.n_chunk_recalcs != 0) blok_trace("updated %i chunks in %.1lfms", (int)stats.n_chunk_recalcs, 1000.0 * stats.t_chunks);
 
 
 
     /* Now, actually render with OpenGL */
+
+    // set up the screen
+    glViewport(0, 0, width, height);
+
+    // enable face culling, and cull the faces that are facing away from us
+    // I'm using clockwise as the winding
+    glEnable(GL_CULL_FACE);
+    glFrontFace(GL_CW);
+    glCullFace(GL_BACK);
 
 
     /* 'GEOM', RENDER GEOMETRY PASS */
@@ -298,15 +290,9 @@ void Renderer::renderFrame() {
     // enable depth testing, and make objects that are closer (i.e. have less distance) show up in front
     glEnable(GL_DEPTH_TEST); 
     glDepthFunc(GL_LESS);
-
+    
     // disable blending for the geometry pass
     glDisable(GL_BLEND);
-
-    // enable face culling, and cull the faces that are facing away from us
-    // I'm using clockwise as the winding
-    glEnable(GL_CULL_FACE);
-    glFrontFace(GL_CW);
-    glCullFace(GL_BACK);
 
     // draw to the 'geometry' target in the renderer
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, targets["GEOM"]->glFBO);
@@ -357,76 +343,6 @@ void Renderer::renderFrame() {
         }
 
     } 
-/*
-
-    glEnableVertexAttribArray(5);
-    glVertexAttribDivisor(5, 1);  
-
-    
-    // render the chunks, by using their list of blocks & IDs
-    for (int idx = 0; idx < N_chunks; ++idx) {
-        // just expand out the queue entry
-        Chunk* chunk = torender[idx];
-
-        glBindBuffer(GL_ARRAY_BUFFER, chunk->rcache.glVBO_blocks);
-        glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, chunk->rcache.glVBO_ids);
-        glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-
-        glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, chunk->rcache.renderBlocks.size());
-
-        stats.n_tris += mymesh->faces.size() * chunk->rcache.renderBlocks.size();
-    }
-*/
-
-    /*
-    // use our geometry shader
-    shaders["GEOM_ChunkMesh"]->use();
-
-    // set up global matrices (i.e. the camera transform)
-    shaders["GEOM_ChunkMesh"]->setMat4("gPV", gPV);
-
-    // now, set the diffuse texture for all blocks
-    // TODO: write a texture atlas
-    shaders["GEOM_ChunkMesh"]->setInt("texID1", 2);
-    glActiveTexture(GL_TEXTURE2);
-    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT.png")->glTex);
-
-    shaders["GEOM_ChunkMesh"]->setInt("texID2", 3);
-    glActiveTexture(GL_TEXTURE3);
-    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT_GRASS.png")->glTex);
-
-    shaders["GEOM_ChunkMesh"]->setInt("texID3", 4);
-    glActiveTexture(GL_TEXTURE4);
-    glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/STONE.png")->glTex);
-
-    glBindVertexArray(mymesh->glVAO); 
-
-    glEnableVertexAttribArray(5);
-    glVertexAttribDivisor(5, 1);  
-
-    glEnableVertexAttribArray(6);
-    glVertexAttribDivisor(6, 1);
-
-    
-    // render the chunks, by using their list of blocks & IDs
-    for (int idx = 0; idx < N_chunks; ++idx) {
-        // just expand out the queue entry
-        Chunk* chunk = torender[idx];
-
-        glBindBuffer(GL_ARRAY_BUFFER, chunk->rcache.glVBO_blocks);
-        glVertexAttribPointer(5, 3, GL_FLOAT, GL_FALSE, sizeof(vec3), (void*)0);
-
-        glBindBuffer(GL_ARRAY_BUFFER, chunk->rcache.glVBO_ids);
-        glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(float), (void*)0);
-
-        glDrawElementsInstanced(GL_TRIANGLES, mymesh->faces.size() * 3, GL_UNSIGNED_INT, 0, chunk->rcache.renderBlocks.size());
-
-        stats.n_tris += mymesh->faces.size() * chunk->rcache.renderBlocks.size();
-    }
-
-    */
 
     // // Render misc. meshes out
 

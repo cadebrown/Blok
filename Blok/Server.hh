@@ -27,7 +27,7 @@
 #include <mutex> 
 #include <thread>
 #include <time.h>
-
+#include <chrono> 
 
 
 namespace Blok {
@@ -130,15 +130,13 @@ namespace Blok {
         // thread to run the chunk loading
         std::thread T_chunkLoad;
 
-
-
         // construct a new local server.
         // For now, just create a default world generator
         LocalServer() {
             worldGen = new WG::DefaultWG(0);
             //worldGen = new WG::FlatWG(0);
 
-            // start the thread
+            // start the thread to load chunks & handle requests
             T_chunkLoad = std::thread(&LocalServer::T_chunkLoad_run, this);
 
             // initialize statistics
@@ -171,37 +169,44 @@ namespace Blok {
         //   which attempts to service the chunk loader
         void T_chunkLoad_run() {
             while (true) {
-                struct timespec tim, tim2;
+                struct timespec tim;
                 // wait for a second
                 tim.tv_sec = 0;
                 // run every 100 ms
-                tim.tv_nsec = 100 * 1000;
+                tim.tv_nsec = 25 * 1000000;
+
                 // wait until there was something
                 while (chunkRequests.size() == 0) {
-                    nanosleep(&tim, &tim2);
+                    nanosleep(&tim, NULL);
                 }
 
+
                 L_chunks.lock();
-                // now, grab them off
-                chunkRequestsInProgress = chunkRequests;
-                // say we are handling all of them
-                chunkRequests.clear();
+
+                auto it = chunkRequests.cbegin();
+                int ct = 0;
+
+                chunkRequestsInProgress.clear();
+
+                // grab off some chunk requests
+                while (it != chunkRequests.cend() && ct < 8) {
+                    chunkRequestsInProgress.insert(*it);
+                    chunkRequests.erase(it++);
+                    ct++;
+                }
+
                 L_chunks.unlock();
 
-                // our results,
-                Map<ChunkID, Chunk*> res;
-
-                /* actual chunk generation */
+                Map<ChunkID, Chunk*> gen;
 
                 for (auto cid : chunkRequestsInProgress) {
-                    // calculate the chunk
-                    res[cid] = worldGen->getChunk(cid);
+                    gen[cid] = worldGen->getChunk(cid);
                 }
 
                 // store them back
 
                 L_chunks.lock();
-                for (auto elem : res) {
+                for (auto elem : gen) {
                     loadedChunks[elem.first] = elem.second;
                 }
                 chunkRequestsInProgress.clear();

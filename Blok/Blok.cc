@@ -7,6 +7,7 @@
 
 // use the standard time library it for the getTime() method
 #include <chrono>
+#include <mutex>
 
 // for getopt
 #include <unistd.h>
@@ -60,12 +61,16 @@ LogLevel getLogLevel() {
     return curLevel;
 }
 
+std::mutex logMut;
+
 // logs with a leevl. use the macros `blok_info`, etc
 void log_internal(LogLevel level, const char *file, int line, const char* fmt, ...) {
     if (level < curLevel) {
         // not important enough to print currently
         return;
     }
+
+    logMut.lock();
 
     // print a header with the level name
     fprintf(stderr, BOLD "%s" RESET ": ", levelNames[level]);
@@ -100,6 +105,9 @@ void log_internal(LogLevel level, const char *file, int line, const char* fmt, .
 
     // flush the output
     fflush(stderr);
+
+    logMut.unlock();
+
 }
 
 /* MISC FUNCTIONS */
@@ -495,12 +503,15 @@ int main(int argc, char** argv) {
         if (client->N_frames % every == 0) {
             double et = getTime();
 
-            const char* triSuf = stats.n_tris < 10000 ? "" : stats.n_tris < 10000000 ? "k" : "m";
+            stats.n_tris /= every;
+
+            const char* triSuf = stats.n_tris < 1000 ? "" : stats.n_tris < 1000000 ? "k" : "m";
             
-            int tris = stats.n_tris < 10000 ? stats.n_tris : stats.n_tris < 10000000 ? stats.n_tris / 1000 : stats.n_tris / 1000000;
+            double tris = stats.n_tris < 1000 ? stats.n_tris : stats.n_tris / 1.0 < 1000000 ? stats.n_tris / 1000.0 : stats.n_tris / 1000000.0;
+
 
             double dt = et - everyT;
-            blok_debug("[frame%i] fps: %.1lf, ms/chunk: %.3lf, tris: %.3lf%s", client->N_frames, every / dt, (1e3 * stats.t_chunks) / stats.n_chunk_recalcs, tris, triSuf);
+            blok_debug("[frame%i] fps: %.1lf, ms/chunk: %.3lf, tris: %.3lf%s", client->N_frames, every / dt, stats.n_chunk_recalcs != 0 ? (1e3 * stats.t_chunks) / stats.n_chunk_recalcs : 0.0, (double)tris, triSuf);
 
             everyT = et;
 

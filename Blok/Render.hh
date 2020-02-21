@@ -15,6 +15,8 @@
 
 /* std libraries */
 #include <algorithm>
+#include <thread>
+#include <mutex>
 
 /* additional graphics library from GLM */
 #include <Blok/glm/gtx/transform.hpp>
@@ -333,7 +335,7 @@ namespace Blok::Render {
         // list of all the faces, as triplets referring to indices in the 'vertices' list
         List<Face> faces;
 
-        // recalculate the mesh
+        // recalculate the mesh, do not update OpenGL though
         void update(Chunk* chunk);
 
         // construct a new chunk mesh, with nothing in it.
@@ -439,7 +441,7 @@ namespace Blok::Render {
     class Renderer {
         public:
 
-        // the width/height (in pixels) of the output target
+        // the width/height (in pixels) of the actual screen output
         int width, height;
 
         // various render targets, for different stages in processing
@@ -448,11 +450,16 @@ namespace Blok::Render {
         // various shaders that are used
         Map<String, Shader*> shaders;
 
-        // chunk mesh objects
-        Map<Chunk*, ChunkMesh*> chunkMeshes;
 
         // array of freely allocated ChunkMeshes
         List<ChunkMesh*> chunkMeshPool;
+
+        // chunk mesh requests
+        Set<Chunk*> chunkMeshRequests;
+        
+        // chunk mesh objects
+        Map<Chunk*, ChunkMesh*> chunkMeshes;
+
 
         // the default background color
         vec3 clearColor;
@@ -593,10 +600,10 @@ namespace Blok::Render {
                 delete cmesh;
             }
 
-            for (auto keyval : chunkMeshes) {
+            /*for (auto keyval : chunkMeshes) {
                 // clear any existing chunk meshes
                 delete keyval.second;
-            }
+            }*/
             chunkMeshPool.clear();
 
             // remove/delete the debug lines variables
@@ -629,7 +636,6 @@ namespace Blok::Render {
 
         // finalize, and render out the entire queue
         void renderFrame();
-
 
     };
 

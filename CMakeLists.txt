@@ -12,7 +12,8 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 
 # Default to release, if not specified
 if (NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE Release)
+    #set(CMAKE_BUILD_TYPE Release)
+    set(CMAKE_BUILD_TYPE Debug)
 endif()
 
 # set C++ flags to always check for errors

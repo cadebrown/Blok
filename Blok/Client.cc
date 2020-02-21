@@ -44,12 +44,14 @@ static void glfw_resize_callback(GLFWwindow* window, int w, int h) {
         //client->input.keys[key] = (action == GLFW_PRESS) || (action == GLFW_REPEAT);
         //printf("%d: %d\n", key, client->input.keys[key]);
     }
+
 }
 
 // callback to be called when the window's framebuffer (i.e. output) is resized, so update
 //   the area openGL is rendering to
 static void glfw_fbresize_callback(GLFWwindow* window, int width, int height) {
-    glViewport(0, 0, width, height);
+    
+    //glViewport(0, 0, width, height);
 }
 
 // construct a new client
@@ -166,7 +168,7 @@ bool Client::frame() {
     ChunkID rendid = { (int)(floor(gfx.renderer->pos.x / CHUNK_SIZE_Z)), (int)(floor(gfx.renderer->pos.z / CHUNK_SIZE_Z)) };
 
     // view distance in chunks
-    int N = 5;
+    int N = 6;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {

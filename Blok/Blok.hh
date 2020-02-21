@@ -336,6 +336,9 @@ namespace Blok {
 
             rcache.isDirty = true;
 
+            rcache.dirtyMin = vec3i(0, 0, 0);
+            rcache.dirtyMax = vec3i(CHUNK_SIZE_X, CHUNK_SIZE_Y, CHUNK_SIZE_Z);
+
             // assume there are no valid chunks to start off with
             rcache.cL = rcache.cT = rcache.cR = rcache.cB = NULL;
         }
@@ -540,7 +543,6 @@ namespace Blok {
     #define blok_info(...) Blok::log_internal(Blok::LogLevel::INFO, __FILE__, __LINE__, __VA_ARGS__)
     #define blok_warn(...) Blok::log_internal(Blok::LogLevel::WARN, __FILE__, __LINE__, __VA_ARGS__)
     #define blok_error(...) Blok::log_internal(Blok::LogLevel::ERROR, __FILE__, __LINE__, __VA_ARGS__)
-
 
 };
 
