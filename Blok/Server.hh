@@ -43,12 +43,18 @@ namespace Blok {
         std::mutex L_chunks;
 
         // a set (i.e. no duplicates) of active chunk requests
+        // NOTE: do not modify this variable directly; either use `getChunk()`, or lock `L_chunks` for
+        //   a critical section
         Set<ChunkID> chunkRequests;
 
         // the set of currently being worked on in a background thread
+        // NOTE: do not modify this variable directly; either use `getChunk()`, or lock `L_chunks` for
+        //   a critical section
         Set<ChunkID> chunkRequestsInProgress;
 
         // set of all chunks that are currently loaded by the server
+        // NOTE: do not modify this variable directly; either use `getChunk()`, or lock `L_chunks` for
+        //   a critical section
         Map<ChunkID, Chunk*> loadedChunks;
 
         // If the chunk is currently loaded, just return a pointer to that chunk, which can be modified (see Blok.hh)
