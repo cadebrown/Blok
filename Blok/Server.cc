@@ -69,7 +69,7 @@ bool LocalServer::raycastBlock(Ray ray, float maxDist, RayHit& hitInfo) {
             ChunkID cid = ChunkID::fromPos(xyz_i);
 
             // check if we have changed chunks. If so, look it up by ID
-            if (cc == NULL || cid != lastChunkID) cc = getChunkIfLoaded(cid);
+            if (cc == NULL || cid != lastChunkID) cc = getChunk(cid, false);
 
             // if the current chunk doesn't exist, we can raycast no farther, so we say we haven't hit anything
             if (!cc) return false;

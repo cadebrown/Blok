@@ -187,7 +187,7 @@ bool Client::frame() {
     }
 
     // now, allow time for the server to do this (2.5 ms)
-    server->processChunkRequests(0.0025);
+    //server->processChunkRequests(0.0025);
 
     // capture information about the hit
     RayHit hit;
@@ -214,7 +214,7 @@ bool Client::frame() {
             vec3i targetPos = vec3i(glm::floor(vec3(hit.blockPos) + hit.normal));
             if (targetPos.y >= 0 && targetPos.y < CHUNK_SIZE_Y) {
                 // set it
-                Chunk* cur = server->getChunkIfLoaded(ChunkID::fromPos(targetPos));
+                Chunk* cur = server->getChunk(ChunkID::fromPos(targetPos), false);
                 vec3i localPos = targetPos - cur->getWorldPos();
 
                 cur->set(localPos.x, localPos.y, localPos.z, {ID::STONE});
@@ -223,7 +223,7 @@ bool Client::frame() {
 
         } else if (input.mouseButtons[GLFW_MOUSE_BUTTON_LEFT] && !input.lastMouseButtons[GLFW_MOUSE_BUTTON_LEFT]) {
             // delete block
-            Chunk* cur = server->getChunkIfLoaded(ChunkID::fromPos(hit.blockPos));
+            Chunk* cur = server->getChunk(ChunkID::fromPos(hit.blockPos), false);
             vec3i localPos = hit.blockPos - cur->getWorldPos();
 
             cur->set(localPos.x, localPos.y, localPos.z, {ID::AIR});

@@ -344,7 +344,7 @@ void runTests() {
     }
 
     // make sure they are all loaded
-    while (server->processChunkRequests(1.0) > 0) ;
+    //while (server->processChunkRequests(1.0) > 0) ;
 
     int hits = 0;
 
