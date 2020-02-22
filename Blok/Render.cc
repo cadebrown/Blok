@@ -226,6 +226,7 @@ void Renderer::renderFrame() {
     double stime_cu = getTime();
     // take one off 
     int ct = 0;
+    // spend up to 5ms per frame updating them
     while (chunkMeshRequests.size() > 0 && getTime() - stime_cu < 0.005) {
         auto cmit = chunkMeshRequests.begin();
 
@@ -246,8 +247,11 @@ void Renderer::renderFrame() {
 
         // calculate the update
         newcm->update(*cmit);
+        stats.n_chunk_recalcs++;
 
         chunkMeshRequests.erase(cmit);
+        ct++;
+
 
     }
 
@@ -269,7 +273,7 @@ void Renderer::renderFrame() {
     stats.t_chunks = getTime() - stats.t_chunks;
 
     // output statistics
-    //if (stats.n_chunk_recalcs != 0) blok_trace("updated %i chunks in %.1lfms", (int)stats.n_chunk_recalcs, 1000.0 * stats.t_chunks);
+    if (stats.n_chunk_recalcs != 0) blok_trace("updated %i chunks in %.1lfms", (int)stats.n_chunk_recalcs, 1000.0 * stats.t_chunks);
 
 
 

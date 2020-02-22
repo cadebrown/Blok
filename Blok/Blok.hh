@@ -48,7 +48,6 @@
 
 namespace Blok {
 
-
     /* TYPE DEFINITIONS */
 
     // populate some basic vector data types from GLM, a useful header-only library
@@ -139,6 +138,12 @@ namespace Blok {
     // this is the global FreeType library we use for loading fonts.
     // initialization is in Blok.cc
     extern FT_Library ftlib;
+
+    /* UTILITIES */
+
+    // format a given value, with unit post-fixes
+    // for example, `formatUnits(10002, {"", "k", "m"})` formats as `10.002k`
+    String formatUnits(double val, const List<String>& names);
 
 
     /* GAME ENGINE SPECIFIC TYPE DEFS */

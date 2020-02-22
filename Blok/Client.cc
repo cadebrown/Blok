@@ -144,7 +144,7 @@ bool Client::frame() {
     if (dt < .0001) dt = .0001;
 
     // amount (in radians) the pitch has to be within
-    const float pitch_slop = .1f;
+    const float pitch_slop = .01f;
 
     // sanitize the input
     if (pitch > M_PI / 2 - pitch_slop) pitch = M_PI / 2 - pitch_slop;
@@ -168,7 +168,7 @@ bool Client::frame() {
     ChunkID rendid = { (int)(floor(gfx.renderer->pos.x / CHUNK_SIZE_Z)), (int)(floor(gfx.renderer->pos.z / CHUNK_SIZE_Z)) };
 
     // view distance in chunks
-    int N = 6;
+    int N = 16;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
@@ -251,18 +251,33 @@ bool Client::frame() {
     // smooth it out over time
     smoothFPS = (1 - dt) * smoothFPS + 1;
 
+
+/*
+
     // info screen
     char tmp[2048];
-    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %.1f, %.1f, %.1f\nchunk: %+i,%+i\nfps: %.1lf\nhit: %s\nlooking_at: %.1f,%.1f,%.1f\nlooking_nrm: %.1f,%.1f,%.1f", 
+    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %.1f, %.1f, %.1f\nchunk: %+i,%+i\nfps: %.1lf\nhit: %s\nlooking_at: %.1f,%.1f,%.1f\nlooking_nrm: %.1f,%.1f,%.1f\ntris: %s\n", 
         BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
         gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
         rendid.X, rendid.Z,
         smoothFPS,
         BlockProperties::all[hit.blockData.id]->name.c_str(),
         hit.pos.x, hit.pos.y, hit.pos.z,
-        hit.normal.x, hit.normal.y, hit.normal.z
+        hit.normal.x, hit.normal.y, hit.normal.z,
+        formatUnits(gfx.renderer->stats.n_tris, {"", "k", "m", "g"}).c_str()
     );
+*/
 
+    // info screen
+    char tmp[2048];
+    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %+.1f, %+.1f, %+.1f, chunk: %+i,%+i\nhit: %s\nfps: %.1lf, tris: %s\n", 
+        BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
+        gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
+        rendid.X, rendid.Z,
+        BlockProperties::all[hit.blockData.id]->name.c_str(),
+        smoothFPS,
+        formatUnits(gfx.renderer->stats.n_tris, {"", "k", "m", "g"}).c_str()
+    );
 
     uit->text = tmp;
     gfx.renderer->renderText({10, gfx.renderer->height-10}, uit);

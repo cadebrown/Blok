@@ -30,6 +30,19 @@ FT_Library ftlib;
 // the map of block IDs to their properties
 Map<ID, BlockProperties*> BlockProperties::all;
 
+String formatUnits(double val, const List<String>& names) {
+    bool isNeg = val < 0;
+    if (isNeg) val = -val;
+    int idx;
+    while (idx < names.size() && val > 1000) {
+        val /= 1000.0;
+        idx++;
+    }
+
+    char tmpbuf[256];
+    sprintf(tmpbuf, "%.3lf%s", val, names[idx].c_str());
+    return String(tmpbuf);
+}
 
 
 /* LOGGING */
@@ -429,7 +442,7 @@ int main(int argc, char** argv) {
     // create a local server
     LocalServer* server = new LocalServer();
 
-    Client* client = new Client(server, 800, 600);
+    Client* client = new Client(server, 1280, 800);
 
     // just update
     client->gfx.renderer->pos = vec3(0, 14, -10);
