@@ -563,7 +563,7 @@ namespace Blok::Render {
             // construct a basic lighting pass
             targets["LBASIC"] = new Target(width, height, 1);
 
-            targets["ssq"] = new Target(width, height, 1);
+            //targets["ssq"] = new Target(width, height, 1);
 
             // get shaders for the geometry scene pass
             shaders["GEOM_ChunkMesh"] = Shader::load("assets/shaders/GEOM_ChunkMesh.vert", "assets/shaders/GEOM_ChunkMesh.frag");
@@ -579,10 +579,7 @@ namespace Blok::Render {
             shaders["DebugLine"] = Shader::load("assets/shaders/DebugLine.vert", "assets/shaders/DebugLine.frag");
 
             // shader for rendering text
-            shaders["textquad"] = Shader::load("resources/textquad.vs", "resources/textquad.fs");
-
-
-            shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
+            shaders["TextQuad"] = Shader::load("assets/shaders/TextQuad.vert", "assets/shaders/TextQuad.frag");
             
             // allocate the debug lines
             glGenVertexArrays(1, &debug.glLinesVAO);

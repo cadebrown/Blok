@@ -27,7 +27,6 @@ void Renderer::resize(int w, int h) {
     // else, reset some stuff like the render targets
     targets["GEOM"]->resize(width, height);
     targets["LBASIC"]->resize(width, height);
-    targets["ssq"]->resize(width, height);
 }
 
 // render a chunk of data
@@ -319,7 +318,6 @@ void Renderer::renderFrame() {
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
 
-
     // use our geometry shader
     shaders["GEOM_ChunkMesh"]->use();
 
@@ -442,7 +440,7 @@ void Renderer::renderFrame() {
     glDisable(GL_DEPTH_TEST); 
 
     // use the shader for rending characters
-    shaders["textquad"]->use();
+    shaders["TextQuad"]->use();
 
     // use a simple orthographic projection in screen coordinates
     // TODO: use a normalized coordinate system? So that text scales linearly?
@@ -454,7 +452,7 @@ void Renderer::renderFrame() {
         // set up the font texture
         glActiveTexture(GL_TEXTURE8);
         glBindTexture(GL_TEXTURE_2D, ftext->glTex);
-        shaders["textquad"]->setInt("texFont", 8);
+        shaders["TextQuad"]->setInt("texFont", 8);
 
         for (auto& uit : entry.second) {
             if (uit.second->cache.lastText != uit.second->text || uit.second->cache.lastMaxWidth != uit.second->maxWidth) {
@@ -467,7 +465,7 @@ void Renderer::renderFrame() {
 
             // translate the position off
             mat4 gM = glm::translate(vec3(uit.first.x, uit.first.y, 0.0));
-            shaders["textquad"]->setMat4("gPM", gP_text * gM);
+            shaders["TextQuad"]->setMat4("gPM", gP_text * gM);
 
             // now, draw it
             glBindVertexArray(uit.second->glVAO);

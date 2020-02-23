@@ -40,10 +40,20 @@ void main() {
 
     // 3: do depth fog
     float dep = wpos.w - 1;
-    if (dep < 0) dep = 1;
-    dep = dep * 0.45;
+    if (dep < 0) dep = 256;
 
-    gColor = sun_col * (1 - dep) + vec4(dep, dep, dep, 1);
+    // alpha decay factor
+    float a = 0.012;
+
+    dep -= 16;
+
+    float attn = 1 - exp(-(a * dep) * (a * dep));
+    if (attn < 0) attn = 0;
+    attn *= 0.4;
+    
+    //dep = dep * 0.45;
+
+    gColor = sun_col * (1 - attn) + vec4(vec3(attn), 1);
     //gColor = vec4(N, 1.0);
     //gColor = vec4(vec3(wpos.w), 1.0);
     //gColor = vec4(vec3(sunDep), 1);

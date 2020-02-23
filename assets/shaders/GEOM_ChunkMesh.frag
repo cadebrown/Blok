@@ -92,7 +92,7 @@ void main() {
     gUV = vec4(fUV, 0.0f, 0.0f);
     gNormal = vec4(N, 0.0f);
     gWPos = fWPos;
-    gWPos.w = 1;  
+    gWPos.w = (fPos.z + 1) / 2 + 1; 
     /*if (fPos.w < 0.1) gWPos.w = 1.0;
     else gWPos.w = fPos.z / 256.0;
     gWPos.w = max(0, min(1, gWPos.w)) + 1;
