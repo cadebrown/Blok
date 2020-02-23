@@ -304,16 +304,19 @@ namespace Blok::Render {
         // the Normal direction
         vec3 N;
 
-
         // the block ID at this vertex
         float blockID;
 
+        // ambient occlusion
+        float ao;
+
         // ambient occlusion?
-        ChunkMeshVertex(vec3 pos, vec2 uv, vec3 N, int blockID) {
+        ChunkMeshVertex(vec3 pos, vec2 uv, vec3 N, int blockID, float ao) {
             this->pos = pos;
             this->uv = uv;
             this->N = N;
             this->blockID = blockID;
+            this->ao = ao;
         }
 
     };
@@ -557,9 +560,6 @@ namespace Blok::Render {
             // construct our geometry pass
             targets["GEOM"] = new Target(width, height, 5);
             
-            // construct a shadow map target
-            targets["SUN_SHADOW"] = new Target(256, 256, 1);
-
             // construct a basic lighting pass
             targets["LBASIC"] = new Target(width, height, 1);
 
@@ -569,17 +569,21 @@ namespace Blok::Render {
             shaders["GEOM_ChunkMesh"] = Shader::load("assets/shaders/GEOM_ChunkMesh.vert", "assets/shaders/GEOM_ChunkMesh.frag");
             shaders["GEOM_Mesh"] = Shader::load("assets/shaders/GEOM_Mesh.vert", "assets/shaders/GEOM_Mesh.frag");
 
-            // get shaders for the sun shadow pass
-            shaders["SUN_SHADOW_ChunkMesh"] = Shader::load("assets/shaders/SUN_SHADOW_ChunkMesh.vert", "assets/shaders/SUN_SHADOW_ChunkMesh.frag");
-
             // get shaders for the LBASIC pass
             shaders["LBASIC"] = Shader::load("assets/shaders/LBASIC.vert", "assets/shaders/LBASIC.frag");
 
-            shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
-            shaders["textquad"] = Shader::load("resources/textquad.vs", "resources/textquad.fs");
+            // the shader for the reticle
             shaders["Reticle"] = Shader::load("assets/shaders/Reticle.vert", "assets/shaders/Reticle.frag");
+
+            // shader for the debugging thin lines
             shaders["DebugLine"] = Shader::load("assets/shaders/DebugLine.vert", "assets/shaders/DebugLine.frag");
 
+            // shader for rendering text
+            shaders["textquad"] = Shader::load("resources/textquad.vs", "resources/textquad.fs");
+
+
+            shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
+            
             // allocate the debug lines
             glGenVertexArrays(1, &debug.glLinesVAO);
             glGenBuffers(1, &debug.glLinesVBO);

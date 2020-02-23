@@ -112,23 +112,36 @@ namespace Blok::Audio {
 
         public:
 
-        // the PortAudio stream
-        PaStream* paStream;
-        // the output parameters
-        PaStreamParameters out_param;
-
         // sample rate & buffer sizes
         int hz, bufsize;
+
+        // a lock to control access to all stream-related variables
+        std::mutex L_stream;
+
+
+        // the PortAudio stream
+        // NOTE: Do not modify without first locking 'L_stream'!
+        PaStream* paStream;
+
+        // the output parameters
+        // NOTE: Do not modify without first locking 'L_stream'!
+        PaStreamParameters out_param;
+
+        // sounds being played currently
+        // NOTE: Do not modify without first locking 'L_stream'!
+        List<BufferPlay*> curBufPlays;
+
 
         // stream position
         unsigned long pos;
 
-        // sounds being played currently
-        List<BufferPlay> curBufPlays;
-
 
         // construct a new engine
         Engine();
+
+
+        // play a given buffer, starting now
+        BufferPlay* play(Buffer* buf, bool loop=false);
 
     };
 

@@ -469,12 +469,9 @@ int main(int argc, char** argv) {
     // get time
     double everyT = getTime();
 
-    Audio::Buffer* buf = Audio::Buffer::loadConst("assets/audio/Theme.ogg");
-
     // create an engine
-    Audio::Engine* eng = new Audio::Engine();
-
-    eng->curBufPlays.push_back(Audio::BufferPlay(buf));
+    /*Audio::Engine* eng = new Audio::Engine();*/
+    //eng->curBufPlays.push_back(Audio::BufferPlay(buf));
 
 
 

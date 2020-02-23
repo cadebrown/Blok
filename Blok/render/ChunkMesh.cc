@@ -68,15 +68,78 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
     }
 
     // now, add them to the mesh, if they are visible
+    // keep a array of all blocks around the origin
+    //    +---+---+---+
+    // Y /           /|
+    //  /    ...    / |
+    // +---+---+---+  |  Z
+    // | 2 |11 |20 |  |
+    // | 1 |10 |19 |  /
+    // | 0 | 9 |18 | /
+    // +---+---+---+/ X
+    //
+    BlockData surround[27];
+
+    // get surrounding sample
+    #define GET_S(_x, _y, _z) (surround[(_x) * 9 + (_z) * 3 + (_y)])
+
+
+    // basically a monte carlo sample
+    float raycastFac = 1.0;
+
+    if (doTop || doBot || doRig || doLef || doFor || doBac) {
+        // fill up the surrounds
+        for (int lx = -1; lx <= 1; ++lx) {
+            for (int lz = -1; lz <= 1; ++lz) {
+                int nx = x+lx, nz = z+lz;
+
+                // source for the chunk
+                Chunk* src = chunk;
+                if (nx < 0) {
+                    src = src->rcache.cL;
+                    nx += CHUNK_SIZE_X;
+                } else if (nx >= CHUNK_SIZE_X) {
+                    src = src->rcache.cR;
+                    nx -= CHUNK_SIZE_X;
+                }
+                if (src == NULL) continue;
+
+                if (nz < 0) {
+                    src = src->rcache.cB;
+                    nz += CHUNK_SIZE_Z;
+                } else if (nz >= CHUNK_SIZE_Z) {
+                    src = src->rcache.cT;
+                    nz -= CHUNK_SIZE_Z;
+                }
+                if (src == NULL) continue;
+
+                for (int ly = -1; ly <= 1; ++ly) {
+                    // sample inner cube
+                    if (y+ly >= 0 && y+ly < CHUNK_SIZE_Y) {
+
+                        GET_S(lx+1, ly+1, lz+1) = src->get(nx, y+ly, nz);
+                    }
+                    //surround[lx * 9 + lz * 3 + ly] = chunk->get(x+lx, y+ly, z+lz);
+                }
+            }            
+        }
+    }
 
     if (doTop) {
         // we are on top, so always render the top face
         int idx = vertices.size();
 
-        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z),     vec2(0.0, 0.5), vec3(0, 1, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z+1),   vec2(0.0, 0.0), vec3(0, 1, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z),   vec2(0.5, 0.5), vec3(0, 1, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z+1), vec2(0.5, 0.0), vec3(0, 1, 0), id));
+        int last0 = (GET_S(0, 2, 0).id != ID::AIR ? 1 : 0) + (GET_S(1, 2, 0).id != ID::AIR ? 1 : 0) + (GET_S(0, 2, 1).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z),     vec2(0.0, 0.5), vec3(0, 1, 0), id, (3 - last0) / 3.0));
+
+        int last1 = (GET_S(0, 2, 2).id != ID::AIR ? 1 : 0) + (GET_S(0, 2, 1).id != ID::AIR ? 1 : 0) + (GET_S(1, 2, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z+1),   vec2(0.0, 0.0), vec3(0, 1, 0), id, (3 - last1) / 3.0));
+
+        int last2 = (GET_S(2, 2, 1).id != ID::AIR ? 1 : 0) + (GET_S(1, 2, 0).id != ID::AIR ? 1 : 0) + (GET_S(2, 2, 0).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z),   vec2(0.5, 0.5), vec3(0, 1, 0), id, (3 - last2) / 3.0));
+
+        int last3 = (GET_S(1, 2, 2).id != ID::AIR ? 1 : 0) + (GET_S(2, 2, 1).id != ID::AIR ? 1 : 0) + (GET_S(2, 2, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z+1), vec2(0.5, 0.0), vec3(0, 1, 0), id, (3 - last3) / 3.0));
 
         faces.push_back({idx, idx+1, idx+2});
         faces.push_back({idx+1, idx+3, idx+2});
@@ -86,10 +149,17 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
         // we are on top, so always render the top face
         int idx = vertices.size();
 
-        vertices.push_back(ChunkMeshVertex(vec3(x, y, z),       vec2(1.0, 0.5), vec3(0, -1, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x, y, z+1),     vec2(1.0, 0.0), vec3(0, -1, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z),     vec2(0.5, 0.5), vec3(0, -1, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z+1),   vec2(0.5, 0.0), vec3(0, -1, 0), id));
+        int last0 = (GET_S(0, 0, 0).id != ID::AIR ? 1 : 0) + (GET_S(1, 0, 0).id != ID::AIR ? 1 : 0) + (GET_S(0, 0, 1).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y, z),       vec2(1.0, 0.5), vec3(0, -1, 0), id, (3 - last0) / 3.0));
+
+        int last1 = (GET_S(0, 0, 2).id != ID::AIR ? 1 : 0) + (GET_S(0, 0, 1).id != ID::AIR ? 1 : 0) + (GET_S(1, 0, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y, z+1),     vec2(1.0, 0.0), vec3(0, -1, 0), id, (3 - last1) / 3.0));
+
+        int last2 = (GET_S(2, 0, 1).id != ID::AIR ? 1 : 0) + (GET_S(1, 0, 0).id != ID::AIR ? 1 : 0) + (GET_S(2, 0, 0).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z),     vec2(0.5, 0.5), vec3(0, -1, 0), id, (3 - last2) / 3.0));
+
+        int last3 = (GET_S(1, 0, 2).id != ID::AIR ? 1 : 0) + (GET_S(2, 0, 1).id != ID::AIR ? 1 : 0) + (GET_S(2, 0, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z+1),   vec2(0.5, 0.0), vec3(0, -1, 0), id, (3 - last3) / 3.0));
 
         faces.push_back({idx+1, idx, idx+2});
         faces.push_back({idx+1, idx+2, idx+3});
@@ -99,10 +169,17 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
         // we are on top, so always render the top face
         int idx = vertices.size();
 
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z),     vec2(0.0, 1.0), vec3(1, 0, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z+1),   vec2(0.5, 1.0), vec3(1, 0, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z),   vec2(0.0, 0.5), vec3(1, 0, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z+1), vec2(0.5, 0.5), vec3(1, 0, 0), id));
+        int last0 = (GET_S(2, 0, 0).id != ID::AIR ? 1 : 0) + (GET_S(2, 1, 0).id != ID::AIR ? 1 : 0) + (GET_S(2, 0, 1).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z),     vec2(0.0, 1.0), vec3(1, 0, 0), id, (3 - last0) / 3.0));
+
+        int last1 = (GET_S(2, 0, 2).id != ID::AIR ? 1 : 0) + (GET_S(2, 0, 1).id != ID::AIR ? 1 : 0) + (GET_S(2, 1, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z+1),   vec2(0.5, 1.0), vec3(1, 0, 0), id, (3 - last1) / 3.0));
+
+        int last2 = (GET_S(2, 2, 1).id != ID::AIR ? 1 : 0) + (GET_S(2, 1, 0).id != ID::AIR ? 1 : 0) + (GET_S(2, 2, 0).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z),   vec2(0.0, 0.5), vec3(1, 0, 0), id, (3 - last2) / 3.0));
+
+        int last3 = (GET_S(2, 1, 2).id != ID::AIR ? 1 : 0) + (GET_S(2, 2, 1).id != ID::AIR ? 1 : 0) + (GET_S(2, 2, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z+1), vec2(0.5, 0.5), vec3(1, 0, 0), id, (3 - last3) / 3.0));
 
         faces.push_back({idx, idx+2, idx+1});
         faces.push_back({idx+1, idx+2, idx+3});
@@ -112,10 +189,17 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
         // we are on top, so always render the top face
         int idx = vertices.size();
 
-        vertices.push_back(ChunkMeshVertex(vec3(x, y, z),     vec2(0.5, 1.0), vec3(-1, 0, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x, y, z+1),   vec2(0.0, 1.0), vec3(-1, 0, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z),   vec2(0.5, 0.5), vec3(-1, 0, 0), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z+1), vec2(0.0, 0.5), vec3(-1, 0, 0), id));
+        int last0 = (GET_S(0, 0, 0).id != ID::AIR ? 1 : 0) + (GET_S(0, 1, 0).id != ID::AIR ? 1 : 0) + (GET_S(0, 0, 1).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y, z),     vec2(0.5, 1.0), vec3(-1, 0, 0), id, (3 - last0) / 3.0));
+
+        int last1 = (GET_S(0, 0, 2).id != ID::AIR ? 1 : 0) + (GET_S(0, 0, 1).id != ID::AIR ? 1 : 0) + (GET_S(0, 1, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y, z+1),   vec2(0.0, 1.0), vec3(-1, 0, 0), id, (3 - last1) / 3.0));
+
+        int last2 = (GET_S(0, 2, 1).id != ID::AIR ? 1 : 0) + (GET_S(0, 1, 0).id != ID::AIR ? 1 : 0) + (GET_S(0, 2, 0).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z),   vec2(0.5, 0.5), vec3(-1, 0, 0), id, (3 - last2) / 3.0));
+
+        int last3 = (GET_S(0, 1, 2).id != ID::AIR ? 1 : 0) + (GET_S(0, 2, 1).id != ID::AIR ? 1 : 0) + (GET_S(0, 2, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z+1), vec2(0.0, 0.5), vec3(-1, 0, 0), id, (3 - last3) / 3.0));
 
         faces.push_back({idx, idx+1, idx+2});
         faces.push_back({idx+1, idx+3, idx+2});
@@ -126,10 +210,17 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
         // we are on top, so always render the top face
         int idx = vertices.size();
 
-        vertices.push_back(ChunkMeshVertex(vec3(x, y, z+1),     vec2(0.5, 1.0), vec3(0, 0, 1), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z+1),   vec2(0.5, 0.5), vec3(0, 0, 1), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z+1),   vec2(0.0, 1.0), vec3(0, 0, 1), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z+1), vec2(0.0, 0.5), vec3(0, 0, 1), id));
+        int last0 = (GET_S(0, 0, 2).id != ID::AIR ? 1 : 0) + (GET_S(1, 0, 2).id != ID::AIR ? 1 : 0) + (GET_S(0, 1, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y, z+1),     vec2(0.5, 1.0), vec3(0, 0, 1), id, (3 - last0) / 3.0));
+
+        int last1 = (GET_S(0, 2, 2).id != ID::AIR ? 1 : 0) + (GET_S(0, 1, 2).id != ID::AIR ? 1 : 0) + (GET_S(1, 2, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z+1),   vec2(0.5, 0.5), vec3(0, 0, 1), id, (3 - last1) / 3.0));
+
+        int last2 = (GET_S(2, 1, 2).id != ID::AIR ? 1 : 0) + (GET_S(1, 0, 2).id != ID::AIR ? 1 : 0) + (GET_S(2, 0, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z+1),   vec2(0.0, 1.0), vec3(0, 0, 1), id, (3 - last2) / 3.0));
+
+        int last3 = (GET_S(1, 2, 2).id != ID::AIR ? 1 : 0) + (GET_S(2, 1, 2).id != ID::AIR ? 1 : 0) + (GET_S(2, 2, 2).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z+1), vec2(0.0, 0.5), vec3(0, 0, 1), id, (3 - last3) / 3.0));
 
         faces.push_back({idx, idx+2, idx+1});
         faces.push_back({idx+1, idx+2, idx+3});
@@ -139,10 +230,17 @@ static void addBlock(List<ChunkMeshVertex>& vertices, List<Face>& faces, Chunk* 
         // we are on top, so always render the top face
         int idx = vertices.size();
 
-        vertices.push_back(ChunkMeshVertex(vec3(x, y, z),     vec2(0.0, 1.0), vec3(0, 0, -1), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z),   vec2(0.0, 0.5), vec3(0, 0, -1), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z),   vec2(0.5, 1.0), vec3(0, 0, -1), id));
-        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z), vec2(0.5, 0.5), vec3(0, 0, -1), id));
+        int last0 = (GET_S(0, 0, 0).id != ID::AIR ? 1 : 0) + (GET_S(1, 0, 0).id != ID::AIR ? 1 : 0) + (GET_S(0, 1, 0).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y, z),     vec2(0.0, 1.0), vec3(0, 0, -1), id, (3 - last0) / 3.0));
+
+        int last1 = (GET_S(0, 2, 0).id != ID::AIR ? 1 : 0) + (GET_S(0, 1, 0).id != ID::AIR ? 1 : 0) + (GET_S(1, 2, 0).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x, y+1, z),   vec2(0.0, 0.5), vec3(0, 0, -1), id, (3 - last1) / 3.0));
+
+        int last2 = (GET_S(2, 1, 0).id != ID::AIR ? 1 : 0) + (GET_S(1, 0, 0).id != ID::AIR ? 1 : 0) + (GET_S(2, 0, 0).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y, z),   vec2(0.5, 1.0), vec3(0, 0, -1), id, (3 - last2) / 3.0));
+
+        int last3 = (GET_S(1, 2, 0).id != ID::AIR ? 1 : 0) + (GET_S(2, 1, 0).id != ID::AIR ? 1 : 0) + (GET_S(2, 2, 0).id != ID::AIR ? 1 : 0);
+        vertices.push_back(ChunkMeshVertex(vec3(x+1, y+1, z), vec2(0.5, 0.5), vec3(0, 0, -1), id, (3 - last3) / 3.0));
 
         faces.push_back({idx, idx+1, idx+2});
         faces.push_back({idx+1, idx+3, idx+2});
@@ -173,6 +271,9 @@ void ChunkMesh::update(Chunk* chunk) {
     // translate them to real world positions
     for (int i = 0; i < vertices.size(); ++i) {
         vertices[i].pos += vec3(chunk->getWorldPos());
+
+        // and add an AO effect based on height
+        vertices[i].ao *= (0.75 + 0.35 * vertices[i].pos.y / CHUNK_SIZE_Y);
     }
 
     // now, store in the OpenGL objects
@@ -236,6 +337,11 @@ ChunkMesh::ChunkMesh() {
     // vertex block ID
     glEnableVertexAttribArray(5);	
     glVertexAttribPointer(5, 1, GL_FLOAT, GL_FALSE, sizeof(ChunkMeshVertex), (void*)offsetof(ChunkMeshVertex, blockID));
+
+    // ambient occlusion
+    glEnableVertexAttribArray(6);	
+    glVertexAttribPointer(6, 1, GL_FLOAT, GL_FALSE, sizeof(ChunkMeshVertex), (void*)offsetof(ChunkMeshVertex, ao));
+
 
     // unbind state
     glBindVertexArray(0);

@@ -11,19 +11,11 @@ layout (location = 0) out vec4 gColor;
 // screen position texture
 uniform sampler2D texWPos;
 
-
-// the depth map from the light's perspective
-uniform sampler2D texSunShadow;
-
-
 // the diffuse texture from the geometry pass
 uniform sampler2D texDiffuse;
 
 // the normal texture from the geometry pass
 uniform sampler2D texNormal;
-
-// inverse matrix transform for the sun
-uniform mat4 gPV_sun;
 
 void main() {
 
@@ -51,24 +43,9 @@ void main() {
     if (dep < 0) dep = 1;
     dep = dep * 0.45;
 
-
-
-/*
-    vec4 shadowCoord = gPV_sun * vec4(wpos.xyz, 1);
-    float vis = 1.0;
-
-    if (texture(texSunShadow, (1+shadowCoord.xy)/2).z < shadowCoord.z-.1) {
-        vis = 0.15;
-    }
-    //vis = shadowCoord.z;
-    //vis = texture(texSunShadow, (1+shadowCoord.xy)/2).z;
-*/
-
-    // compute color
     gColor = sun_col * (1 - dep) + vec4(dep, dep, dep, 1);
     //gColor = vec4(N, 1.0);
     //gColor = vec4(vec3(wpos.w), 1.0);
-    //gColor = vis * diff;
     //gColor = vec4(vec3(sunDep), 1);
 
 }

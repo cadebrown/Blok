@@ -19,6 +19,9 @@ layout (location = 4) in vec3 aN;
 //layout (location = 5) in vec3 gBlockPos;
 layout (location = 5) in float gBlockID;
 
+// ambient occlusion amount
+layout (location = 6) in float aAO;
+
 /* Fragment Shader Outputs */
 
 // the screen position
@@ -31,6 +34,8 @@ out vec3 fN;
 out float fBlockID;
 // the world position
 out vec4 fWPos;
+// the world position
+out float fAO;
 
 /* Globals */
 
@@ -53,6 +58,8 @@ void main() {
 
     // send the block ID over
     fBlockID = gBlockID;
+
+    fAO = aAO;
 
     // update opengl vars
     gl_Position = fPos;

@@ -50,7 +50,6 @@ void FontTexture::addChar(char c) {
         // candidate position to start placing at
         vec2i cand{0, 0};
 
-
         // keep a variable for when we are done
         // it is set to false if there were any changes, so it goes through until there were no changes
         bool isRefined = false;
@@ -129,8 +128,15 @@ void FontTexture::addChar(char c) {
         }
     }
 
+    // calculate the advance value
+    int adv = (int)slot->advance.x, adv_alg = 256;
+    /*
+    if (adv % adv_alg != 0) {
+        adv += (adv_alg - (adv % adv_alg));
+    }*/
+
     // now, add the coordinates to the map
-    charInfos[c] = { vec2i(o_px, o_py), vec2i(o_px + o_sx, o_py + o_sy), vec2i(slot->bitmap_left, slot->bitmap_top), (int)slot->advance.x };
+    charInfos[c] = { vec2i(o_px, o_py), vec2i(o_px + o_sx, o_py + o_sy), vec2i(slot->bitmap_left, slot->bitmap_top), adv };
 }
 
 

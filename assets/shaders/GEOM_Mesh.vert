@@ -1,5 +1,5 @@
 #version 330 core
-
+/* GEOM_Mesh.vert - generic mesh shader for the geometry pass */
 
 // local vertex position
 layout (location = 0) in vec3 aPos;

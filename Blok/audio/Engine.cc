@@ -33,20 +33,23 @@ static int pa_fill_cb(
 
     List<int> eraseIdx;
 
+    // enter a critical section
+    engine->L_stream.lock();
+
     // now, sum all the sounds
     for (int bpi = 0; bpi < engine->curBufPlays.size(); ++bpi) {
         auto& bufplay = engine->curBufPlays[bpi];
-        unsigned int bsize = bufplay.buf->size();
-        for (int i = 0; i < N && (bufplay.loop || bufplay.pos + i < bsize); ++i) {
-            out[i] += bufplay.buf->get((bufplay.pos + i) % bsize) * 0.6f;
+        unsigned int bsize = bufplay->buf->size();
+        for (int i = 0; i < N && (bufplay->loop || bufplay->pos + i < bsize); ++i) {
+            out[i] += bufplay->buf->get((bufplay->pos + i) % bsize) * 0.6f;
         }
 
-        bufplay.pos += N;
+        bufplay->pos += N;
 
         // check if we've passed the end
-        if (bufplay.pos >= bufplay.buf->size()) {
-            if (bufplay.loop) {
-                while (bufplay.pos >= bufplay.buf->size()) bufplay.pos -= bufplay.buf->size();
+        if (bufplay->pos >= bufplay->buf->size()) {
+            if (bufplay->loop) {
+                while (bufplay->pos >= bufplay->buf->size()) bufplay->pos -= bufplay->buf->size();
             } else {
                 eraseIdx.push_back(bpi);
             }
@@ -55,8 +58,11 @@ static int pa_fill_cb(
 
     // now, erase those we just finished ( do it in reverse order so no shifting is required)
     for (int i = eraseIdx.size() - 1; i >= 0; i--) {
+        delete engine->curBufPlays[eraseIdx[i]];
         engine->curBufPlays.erase(engine->curBufPlays.begin() + eraseIdx[i]);
     }
+
+    engine->L_stream.unlock();
 
     // continue processing, i.e. do not stop the straem
     return paContinue;
@@ -69,6 +75,8 @@ Engine::Engine() {
 
     hz = DEFAULT_HZ;
     bufsize = 512;
+
+    L_stream.lock();
 
     out_param.device = Pa_GetDefaultOutputDevice();
     if (out_param.device == paNoDevice) {
@@ -96,6 +104,20 @@ Engine::Engine() {
         blok_error("PortAudio: Couldn't start stream");
         return;
     }
+
+    L_stream.unlock();
+
+}
+
+
+// play a given buffer, starting now
+BufferPlay* Engine::play(Buffer* buf, bool loop) {
+    BufferPlay* res = new BufferPlay(buf);
+    res->loop = loop;
+    L_stream.lock();
+    curBufPlays.push_back(res);
+    L_stream.unlock();
+    return res;
 }
 
 }

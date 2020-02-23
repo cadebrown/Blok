@@ -59,6 +59,14 @@ Client::Client(Server* server, int w, int h) {
     dirtyClient = this;
     this->server = server;
 
+    // create an audio engine
+    this->aEngine = new Audio::Engine();
+
+    // for now, just play theme all the time
+    Audio::Buffer* aTheme = Audio::Buffer::loadConst("assets/audio/Theme.ogg");
+
+    Audio::BufferPlay* bplay = this->aEngine->play(aTheme, true);
+
     // store the monitor
     gfx.monitor = glfwGetPrimaryMonitor();
 
@@ -223,6 +231,11 @@ bool Client::frame() {
                 vec3i localPos = targetPos - cur->getWorldPos();
 
                 cur->set(localPos.x, localPos.y, localPos.z, {ID::STONE});
+
+                // play sound
+                Audio::Buffer* bk = Audio::Buffer::loadConst("assets/audio/sfx/PlaceBlock.ogg");
+                aEngine->play(bk);
+
             }
 
 
@@ -232,6 +245,11 @@ bool Client::frame() {
             vec3i localPos = hit.blockPos - cur->getWorldPos();
 
             cur->set(localPos.x, localPos.y, localPos.z, {ID::AIR});
+
+            // play sound
+            Audio::Buffer* bk = Audio::Buffer::loadConst("assets/audio/sfx/BreakBlock.ogg");
+            aEngine->play(bk);
+
         }
 
     } else {

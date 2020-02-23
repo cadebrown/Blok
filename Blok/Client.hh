@@ -11,6 +11,9 @@
 // we use the server protocol
 #include <Blok/Render.hh>
 
+// we use the audio lib
+#include <Blok/Audio.hh>
+
 // we use the server protocol
 #include <Blok/Server.hh>
 
@@ -45,6 +48,9 @@ namespace Blok {
 
         } gfx;
 
+
+        // our audio engine
+        Audio::Engine* aEngine;
 
         // variable to hold all input related to keyboard/mouse
         struct {

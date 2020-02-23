@@ -400,53 +400,6 @@ void Renderer::renderFrame() {
         glDrawArrays(GL_LINES, 0, 2 * queue.lines.size());
     }
 
-
-    // Now, render out the shadow map for the sun
-    
-    vec3 ldir = glm::normalize(vec3(.1, -1, .1));
-    mat4 sun_gP = glm::ortho<float>(-25, 25, -25, 25, -10.0, 50.0);
-    sun_gP[0] *= -1;
-
-    vec3 lcenter = {0, 80, 0};
-    mat4 sun_gV =  glm::lookAt(lcenter - ldir * 30.0f, lcenter, up);
-
-    mat4 sun_gPV = sun_gP * sun_gV;
-
-    /*
-
-
-    glBindFramebuffer(GL_FRAMEBUFFER, targets["SUN_SHADOW"]->glFBO);
-    glDrawBuffers(targets["SUN_SHADOW"]->glColorAttachments.size(), &targets["SUN_SHADOW"]->glColorAttachments[0]);
-    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
-
-    glEnable(GL_DEPTH_TEST); 
-    glDepthFunc(GL_LESS);
-    glDisable(GL_BLEND);
-
-    // use our geometry shader
-    shaders["SUN_SHADOW_ChunkMesh"]->use();
-
-    // set up global matrices (i.e. the camera transform)
-    shaders["SUN_SHADOW_ChunkMesh"]->setMat4("gPV", sun_gPV);
-
-    // render through all the available chunks to render
-    for (int idx = 0; idx < N_chunks; ++idx) {
-        Chunk* chunk = torender[idx];
-        if (chunkMeshes.find(chunk) != chunkMeshes.end()) {
-            // we've got a mesh ready to render
-            ChunkMesh* cm = chunkMeshes[chunk];
-
-            // bind the chunk mesh (which also binds all the other properties with it)
-            glBindVertexArray(cm->glVAO);
-            glDrawElements(GL_TRIANGLES, cm->faces.size() * 3, GL_UNSIGNED_INT, 0);
-
-            // add the number of triangles we requested to render
-            //stats.n_tris += cm->faces.size();
-        }
-
-    } 
-*/
-
     /* LBASIC: lighting pass */
 
     // get the screen-space-quad model
@@ -472,12 +425,6 @@ void Renderer::renderFrame() {
     glActiveTexture(GL_TEXTURE6);
     glBindTexture(GL_TEXTURE_2D, targets["GEOM"]->glTex[4]);
     shaders["LBASIC"]->setInt("texWPos", 6);
-
-    glActiveTexture(GL_TEXTURE7);
-    glBindTexture(GL_TEXTURE_2D, targets["SUN_SHADOW"]->glTex[0]);
-    shaders["LBASIC"]->setInt("texSunShadow", 7);
-
-    shaders["LBASIC"]->setMat4("gPV_sun", sun_gPV);
 
     // draw the quad
     glBindVertexArray(ssq->glVAO);
@@ -581,8 +528,9 @@ void Renderer::renderFrame() {
     // draw to actual screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
     glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["LBASIC"]->glFBO);
-    //glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["SUN_SHADOW"]->glFBO);
     glReadBuffer(GL_COLOR_ATTACHMENT0);
+    //glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["GEOM"]->glFBO);
+    //glReadBuffer(GL_COLOR_ATTACHMENT1);
     glDrawBuffer(GL_BACK);
 
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);

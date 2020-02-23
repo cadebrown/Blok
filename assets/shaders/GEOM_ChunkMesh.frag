@@ -17,6 +17,10 @@ in float fBlockID;
 // <x, y, z, 0> wolrd position
 in vec4 fWPos;
 
+// ambient occlusion
+in float fAO;
+
+
 /* FBO Outputs */
 
 // <r, g, b, a> color output
@@ -82,16 +86,17 @@ void main() {
 
     // compute color
     //gColor = col * (la_amb + la_sun * max(0, -dot(N, ldir)));
-    gColor = col;
+    // mix ambient occlusion
+    gColor = col * (0.3 + 0.8 * fAO);
     gPos = fPos;
     gUV = vec4(fUV, 0.0f, 0.0f);
     gNormal = vec4(N, 0.0f);
     gWPos = fWPos;
-    
-    if (fPos.w < 0.1) gWPos.w = 1.0;
+    gWPos.w = 1;  
+    /*if (fPos.w < 0.1) gWPos.w = 1.0;
     else gWPos.w = fPos.z / 256.0;
     gWPos.w = max(0, min(1, gWPos.w)) + 1;
-
+*/
     //vec4 owpos = fWPos;
 
     //if (fWPos.w < 0.1) owpos.w = 100.0;
