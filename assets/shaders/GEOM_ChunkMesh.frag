@@ -14,6 +14,8 @@ in vec3 fN;
 // <id> the (int) block ID that is currently being rendered
 in float fBlockID;
 
+// <x, y, z, 0> wolrd position
+in vec4 fWPos;
 
 /* FBO Outputs */
 
@@ -28,6 +30,11 @@ layout (location = 2) out vec4 gUV;
 
 // <x, y, z, 0> output normal direction
 layout (location = 3) out vec4 gNormal;
+
+// <x, y, z, 0> world position
+layout (location = 4) out vec4 gWPos;
+
+
 
 
 /* Constants */
@@ -57,24 +64,40 @@ void main() {
     }
 
 
-    // amount of ambient light/sun light
-    float la_amb = 0.5, la_sun = 1.0;
-
     // make sure N is a unit vector
     vec3 N = normalize(fN);
+
+
+/*
+    // amount of ambient light/sun light
+    float la_amb = 0.5, la_sun = 1.0;
 
     // simulate a light direction
     // TODO: add uniform support for lighting
     // TODO: move this shader to a deferred pass, have lighting happen later
     vec3 ldir = normalize(vec3(.5, -1, 1));
-
+*/
 
     // now, write outputs to the FBO
 
     // compute color
-    gColor = col * (la_amb + la_sun * max(0, -dot(N, ldir)));
+    //gColor = col * (la_amb + la_sun * max(0, -dot(N, ldir)));
+    gColor = col;
     gPos = fPos;
     gUV = vec4(fUV, 0.0f, 0.0f);
     gNormal = vec4(N, 0.0f);
+    gWPos = fWPos;
+    
+    if (fPos.w < 0.1) gWPos.w = 1.0;
+    else gWPos.w = fPos.z / 256.0;
+    gWPos.w = max(0, min(1, gWPos.w)) + 1;
+
+    //vec4 owpos = fWPos;
+
+    //if (fWPos.w < 0.1) owpos.w = 100.0;
+    //else owpos.w = fPos.z;
+    //owpos.w = min(1, max(0, owpos.w));
+
+   // gWPos = owpos;
 
 }

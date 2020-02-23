@@ -67,7 +67,7 @@ namespace Blok::WG {
 
 
     // FlatWG - a 'flat' world generator, with constant, unchanging layers, which can be set by
-    // "addLayer()"
+    // "addLayer()", so the random seed does nothing
     // See the file `WG/Flat.cc` for the implmentation
     class FlatWG : public WG {
         public:

@@ -26,6 +26,7 @@ void Renderer::resize(int w, int h) {
 
     // else, reset some stuff like the render targets
     targets["GEOM"]->resize(width, height);
+    targets["LBASIC"]->resize(width, height);
     targets["ssq"]->resize(width, height);
 }
 
@@ -39,8 +40,8 @@ void Renderer::renderChunk(ChunkID id, Chunk* chunk) {
 // render a mesh with a transform
 void Renderer::renderMesh(Mesh* mesh, mat4 T) {
 
+    // ensure there is a list for the current mesh
     if (queue.meshes.find(mesh) == queue.meshes.end()) {
-        // add an empty list
         queue.meshes[mesh] = {};
     }
 
@@ -50,6 +51,8 @@ void Renderer::renderMesh(Mesh* mesh, mat4 T) {
 
 // render some text
 void Renderer::renderText(vec2 pxy, UIText* text, vec2 scalexy) {
+
+    // ensure there is a list of texts for the given font
     if (queue.texts.find(text->font) == queue.texts.end()) {
         queue.texts[text->font] = {};
     }
@@ -76,13 +79,21 @@ void Renderer::renderFrame() {
     // number of chunk recalculations (i.e. lighting/mesh/etc )
     stats.n_chunk_recalcs = 0;
 
+    float aspect = (float)width / height;
+
     // calculate the perspective matrix
     gP = glm::perspective(
-        glm::radians(FOV / 2.0f), // field of view
+        glm::radians(FOV), // field of view
         (float)width / height, // aspect ratio
         0.25f, // clip near distance
-        400.0f // clip far distance
+        300.0f // clip far distance
     );
+
+    /*gP = glm::ortho<float>(
+        -25 * aspect, 25 * aspect,
+        -25, 25,
+        0.1, 300.0
+    );*/
 
     // invert the X axis, because I want a LHCS
     gP[0] *= -1;
@@ -93,6 +104,10 @@ void Renderer::renderFrame() {
         pos + forward, // target to look at
         up // up direction (always (0, 1, 0))
     );
+
+    // just compute this once
+    mat4 gPV = gP * gV;
+
 
 
     /* COLLECT CHUNKS */
@@ -251,8 +266,6 @@ void Renderer::renderFrame() {
 
         chunkMeshRequests.erase(cmit);
         ct++;
-
-
     }
 
 
@@ -276,7 +289,6 @@ void Renderer::renderFrame() {
     if (stats.n_chunk_recalcs != 0) blok_trace("updated %i chunks in %.1lfms", (int)stats.n_chunk_recalcs, 1000.0 * stats.t_chunks);
 
 
-
     /* Now, actually render with OpenGL */
 
     // set up the screen
@@ -287,7 +299,6 @@ void Renderer::renderFrame() {
     glEnable(GL_CULL_FACE);
     glFrontFace(GL_CW);
     glCullFace(GL_BACK);
-
 
     /* 'GEOM', RENDER GEOMETRY PASS */
 
@@ -307,8 +318,7 @@ void Renderer::renderFrame() {
     // clear the render target from last frame
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
-    // just compute this once
-    mat4 gPV = gP * gV;
+
 
     // use our geometry shader
     shaders["GEOM_ChunkMesh"]->use();
@@ -317,7 +327,7 @@ void Renderer::renderFrame() {
     shaders["GEOM_ChunkMesh"]->setMat4("gPV", gPV);
 
     // now, set the diffuse texture for all blocks
-    // TODO: write a texture atlas
+    // TODO: write a texture atlas class to handle these
     shaders["GEOM_ChunkMesh"]->setInt("texID1", 2);
     glActiveTexture(GL_TEXTURE2);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/DIRT.png")->glTex);
@@ -330,8 +340,7 @@ void Renderer::renderFrame() {
     glActiveTexture(GL_TEXTURE4);
     glBindTexture(GL_TEXTURE_2D, Texture::loadConst("assets/tex/block/STONE.png")->glTex);
 
-    //glBindVertexArray(mymesh->glVAO);
-
+    // render through all the available chunks to render
     for (int idx = 0; idx < N_chunks; ++idx) {
         Chunk* chunk = torender[idx];
         if (chunkMeshes.find(chunk) != chunkMeshes.end()) {
@@ -342,7 +351,7 @@ void Renderer::renderFrame() {
             glBindVertexArray(cm->glVAO);
             glDrawElements(GL_TRIANGLES, cm->faces.size() * 3, GL_UNSIGNED_INT, 0);
 
-
+            // add the number of triangles we requested to render
             stats.n_tris += cm->faces.size();
         }
 
@@ -350,11 +359,11 @@ void Renderer::renderFrame() {
 
     // // Render misc. meshes out
 
-    // use the geometry shader
-    shaders["geom_mesh"]->use();
+    // use the geometry shader for arbitrary meshes
+    shaders["GEOM_Mesh"]->use();
 
     // set up global matrices
-    shaders["geom_mesh"]->setMat4("gPV", gPV);
+    shaders["GEOM_Mesh"]->setMat4("gPV", gPV);
 
     // loop through mesh/transform requests
     for (const Pair< Mesh*, List<mat4> >& MTs : queue.meshes) {
@@ -366,15 +375,14 @@ void Renderer::renderFrame() {
         // render all the transforms
         // TODO: we could put them into a VBO
         for (mat4 T : MTs.second) {
-            shaders["geom_mesh"]->setVec4("col", col);
-            shaders["geom_mesh"]->setMat4("gM", T);             
+            shaders["GEOM_Mesh"]->setVec4("col", col);
+            shaders["GEOM_Mesh"]->setMat4("gM", T);             
             glDrawElements(GL_TRIANGLES, MTs.first->faces.size() * 3, GL_UNSIGNED_INT, 0);
             col.r = fmodf(col.r + 0.1f, 1.0f);
 
             stats.n_tris += MTs.first->faces.size();
         }
     }
-
 
     // render debugging lines
     if (queue.lines.size() > 0) {
@@ -391,6 +399,91 @@ void Renderer::renderFrame() {
         glBindVertexArray(debug.glLinesVAO);
         glDrawArrays(GL_LINES, 0, 2 * queue.lines.size());
     }
+
+
+    // Now, render out the shadow map for the sun
+    
+    vec3 ldir = glm::normalize(vec3(.1, -1, .1));
+    mat4 sun_gP = glm::ortho<float>(-25, 25, -25, 25, -10.0, 50.0);
+    sun_gP[0] *= -1;
+
+    vec3 lcenter = {0, 80, 0};
+    mat4 sun_gV =  glm::lookAt(lcenter - ldir * 30.0f, lcenter, up);
+
+    mat4 sun_gPV = sun_gP * sun_gV;
+
+    /*
+
+
+    glBindFramebuffer(GL_FRAMEBUFFER, targets["SUN_SHADOW"]->glFBO);
+    glDrawBuffers(targets["SUN_SHADOW"]->glColorAttachments.size(), &targets["SUN_SHADOW"]->glColorAttachments[0]);
+    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+
+    glEnable(GL_DEPTH_TEST); 
+    glDepthFunc(GL_LESS);
+    glDisable(GL_BLEND);
+
+    // use our geometry shader
+    shaders["SUN_SHADOW_ChunkMesh"]->use();
+
+    // set up global matrices (i.e. the camera transform)
+    shaders["SUN_SHADOW_ChunkMesh"]->setMat4("gPV", sun_gPV);
+
+    // render through all the available chunks to render
+    for (int idx = 0; idx < N_chunks; ++idx) {
+        Chunk* chunk = torender[idx];
+        if (chunkMeshes.find(chunk) != chunkMeshes.end()) {
+            // we've got a mesh ready to render
+            ChunkMesh* cm = chunkMeshes[chunk];
+
+            // bind the chunk mesh (which also binds all the other properties with it)
+            glBindVertexArray(cm->glVAO);
+            glDrawElements(GL_TRIANGLES, cm->faces.size() * 3, GL_UNSIGNED_INT, 0);
+
+            // add the number of triangles we requested to render
+            //stats.n_tris += cm->faces.size();
+        }
+
+    } 
+*/
+
+    /* LBASIC: lighting pass */
+
+    // get the screen-space-quad model
+    Mesh* ssq = Mesh::getConstSSQ();
+
+    glBindFramebuffer(GL_FRAMEBUFFER, targets["LBASIC"]->glFBO);
+    glDrawBuffers(targets["LBASIC"]->glColorAttachments.size(), &targets["LBASIC"]->glColorAttachments[0]);
+
+    glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+    glDisable(GL_DEPTH_TEST); 
+    
+    // render a screen space coord
+    shaders["LBASIC"]->use();
+
+    glActiveTexture(GL_TEXTURE4);
+    glBindTexture(GL_TEXTURE_2D, targets["GEOM"]->glTex[0]);
+    shaders["LBASIC"]->setInt("texDiffuse", 4);
+
+    glActiveTexture(GL_TEXTURE5);
+    glBindTexture(GL_TEXTURE_2D, targets["GEOM"]->glTex[3]);
+    shaders["LBASIC"]->setInt("texNormal", 5);
+
+    glActiveTexture(GL_TEXTURE6);
+    glBindTexture(GL_TEXTURE_2D, targets["GEOM"]->glTex[4]);
+    shaders["LBASIC"]->setInt("texWPos", 6);
+
+    glActiveTexture(GL_TEXTURE7);
+    glBindTexture(GL_TEXTURE_2D, targets["SUN_SHADOW"]->glTex[0]);
+    shaders["LBASIC"]->setInt("texSunShadow", 7);
+
+    shaders["LBASIC"]->setMat4("gPV_sun", sun_gPV);
+
+    // draw the quad
+    glBindVertexArray(ssq->glVAO);
+    glDrawElements(GL_TRIANGLES, ssq->faces.size() * 3, GL_UNSIGNED_INT, 0);
+    stats.n_tris += ssq->faces.size();
+
 
     /* RENDER UI/TEXT PASS */
 
@@ -435,11 +528,8 @@ void Renderer::renderFrame() {
         }
     }
 
-    
-    Mesh* ssq = Mesh::getConstSSQ();
 
     // render reticle
-
     glDisable(GL_BLEND);
 
     shaders["Reticle"]->use();
@@ -460,10 +550,10 @@ void Renderer::renderFrame() {
     glDrawElements(GL_TRIANGLES, ssq->faces.size() * 3, GL_UNSIGNED_INT, 0);
     stats.n_tris += ssq->faces.size();
 
-
     // do an error check and make sure everything was valid
     check_GL();
 
+    /*
     glBindFramebuffer(GL_FRAMEBUFFER, targets["ssq"]->glFBO);
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
     glEnable(GL_DEPTH_TEST); 
@@ -484,14 +574,17 @@ void Renderer::renderFrame() {
     glBindVertexArray(ssq->glVAO); 
     glDrawElements(GL_TRIANGLES, ssq->faces.size() * 3, GL_UNSIGNED_INT, 0);
     stats.n_tris += ssq->faces.size();
+    */
 
+
+    /* draw to the screen */
     // draw to actual screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["ssq"]->glFBO);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["LBASIC"]->glFBO);
+    //glBindFramebuffer(GL_READ_FRAMEBUFFER, targets["SUN_SHADOW"]->glFBO);
     glReadBuffer(GL_COLOR_ATTACHMENT0);
     glDrawBuffer(GL_BACK);
 
-    
     glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
     // now, clear the cache for the next run

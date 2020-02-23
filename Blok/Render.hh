@@ -548,19 +548,33 @@ namespace Blok::Render {
             // be looking directly up
             up = vec3(0, 1, 0);
 
-            FOV = 180.0f;
+            // default to a wide POV
+            FOV = 90.0f;
 
             // add a nice default color
             clearColor = vec3(0.1f, 0.1f, 0.1f);
 
             // construct our geometry pass
-            targets["GEOM"] = new Target(width, height, 4);
+            targets["GEOM"] = new Target(width, height, 5);
+            
+            // construct a shadow map target
+            targets["SUN_SHADOW"] = new Target(256, 256, 1);
+
+            // construct a basic lighting pass
+            targets["LBASIC"] = new Target(width, height, 1);
+
             targets["ssq"] = new Target(width, height, 1);
 
             // get shaders for the geometry scene pass
             shaders["GEOM_ChunkMesh"] = Shader::load("assets/shaders/GEOM_ChunkMesh.vert", "assets/shaders/GEOM_ChunkMesh.frag");
+            shaders["GEOM_Mesh"] = Shader::load("assets/shaders/GEOM_Mesh.vert", "assets/shaders/GEOM_Mesh.frag");
 
-            shaders["geom_mesh"] = Shader::load("resources/geom.vs", "resources/geom.fs");
+            // get shaders for the sun shadow pass
+            shaders["SUN_SHADOW_ChunkMesh"] = Shader::load("assets/shaders/SUN_SHADOW_ChunkMesh.vert", "assets/shaders/SUN_SHADOW_ChunkMesh.frag");
+
+            // get shaders for the LBASIC pass
+            shaders["LBASIC"] = Shader::load("assets/shaders/LBASIC.vert", "assets/shaders/LBASIC.frag");
+
             shaders["ssq"] = Shader::load("resources/ssq.vs", "resources/ssq.fs");
             shaders["textquad"] = Shader::load("resources/textquad.vs", "resources/textquad.fs");
             shaders["Reticle"] = Shader::load("assets/shaders/Reticle.vert", "assets/shaders/Reticle.frag");

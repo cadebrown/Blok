@@ -18,7 +18,7 @@
 namespace Blok::Random {
 
 // XorShift - simple XOR-shift (https://en.wikipedia.org/wiki/Xorshift) based
-//   PRNG
+//   PRNG, for generating ints & floats
 class XorShift {
     public:
 
@@ -70,6 +70,7 @@ class XorShift {
 
 
 // Perlin - a Perlin noise (https://en.wikipedia.org/wiki/Perlin_noise) generator
+// Generates a value in `outputSpace` (default 0 to 1)
 class Perlin {
     public:
 
@@ -108,7 +109,6 @@ class Perlin {
             perms.push_back(permgen.getU32() % tableSize);
         }
     }
-
 
     // apply clipping & scaling to a value
     double toOutput(double res) {
@@ -247,7 +247,7 @@ class Perlin {
         int BA = perms[B % tableSize] + z0;
         int BB = perms[(B + 1) % tableSize] + z0;
 
-        // blender corners of the cube
+        // blend the corners of the cube
         double res = lerp(zf, 
             lerp(yf, 
                 lerp(xf, grad(perms[AA % tableSize], x, y, z), grad(perms[BA % tableSize], x-1, y, z)), 

@@ -28,7 +28,6 @@
 #include <map>
 #include <set>
 
-
 /* GLM (matrix & vector library) */
 #include <Blok/glm/glm.hpp>
 
@@ -41,6 +40,7 @@
 /* freetype (FontLoading) */
 #include <ft2build.h>
 #include FT_FREETYPE_H
+
 
 /* PortAudio (Audio Input/Output Library) */
 #include "portaudio.h"

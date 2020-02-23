@@ -29,6 +29,8 @@ out vec2 fUV;
 out vec3 fN;
 // the block ID number
 out float fBlockID;
+// the world position
+out vec4 fWPos;
 
 /* Globals */
 
@@ -36,9 +38,13 @@ out float fBlockID;
 uniform mat4 gPV;
 
 void main() {
+
     // calculate transformed position
     fPos = gPV * vec4(aPos, 1.0);
 
+    // get world position
+    fWPos = vec4(aPos, fPos.z);
+    
     // just send the UV over
     fUV = aUV;
 

@@ -39,7 +39,8 @@ namespace Blok {
     class Server {
         public:
 
-        // this mutex controls access to all chunk request variables
+        // this mutex controls access to all chunk request variables.
+        // But, use the `getChunk()` method to perform locking
         std::mutex L_chunks;
 
         // a set (i.e. no duplicates) of active chunk requests
@@ -60,13 +61,16 @@ namespace Blok {
         // If the chunk is currently loaded, just return a pointer to that chunk, which can be modified (see Blok.hh)
         // If it is not loaded, the behaviour depends on the 'request' parameter
         //   * If `request==true`, then the server will be notified that the chunk is being requested,
-        //       and will attempt to, in the future, load/generate it, and make it available for subsequent calls
+        //       and will attempt to, in the future, load/generate it, and make it available for subsequent calls.
+        //       This will happen in another thread
+        //   * If `request==false`, then the server will not try to request/generate the given ID
         //
         // NOTE: The caller should never delete a returned chunk; the server does its own memory management,
         //   and will free the chunk once the server object is deleted
         virtual Chunk* getChunk(ChunkID id, bool request=true) {
             // enter critical section, we are accessing variables
             L_chunks.lock();
+
             auto seq = loadedChunks.find(id);
             // by default, we didn't find it
             Chunk* ret = NULL;
@@ -84,18 +88,10 @@ namespace Blok {
                 ret = seq->second;
             }
 
+            // end critical section
             L_chunks.unlock();
             return ret;
         }
-
-        // get a chunk from the server, if it is already loaded. This will not attempt to load/generate the chunk
-        // else, return NULL
-        //virtual Chunk* getChunkIfLoaded(ChunkID id) = 0;
-
-        // this virtual function allows the server to process chunk requests (i.e. load in chunks from a data-base,
-        //   generate them, etc) for a maximum amount of time
-        // it should return the actual number of requests processed
-        //virtual int processChunkRequests(double maxTime) = 0;
 
         // attempt to cast a ray (in world space), up to 'dist', returning whether or not it hit something
         // In the case that it did hit something, also set `hitInfo` to the relevant data about the collision
@@ -105,7 +101,7 @@ namespace Blok {
     };
 
     // LocalServer - a server implementation that operates locally (i.e. on the current machine,
-    //   not over a network)
+    //   not over a network). This is the 
     // NOTE: This is also the server running on hosted servers, but it simply allows for managed network connections
     //   to interact and request things rather than clients
     class LocalServer : public Server {
@@ -123,7 +119,6 @@ namespace Blok {
 
         } stats;
 
-
         // the world generator that is currently being used to generate chunks
         WG::WG* worldGen;
 
@@ -139,7 +134,7 @@ namespace Blok {
             // start the thread to load chunks & handle requests
             T_chunkLoad = std::thread(&LocalServer::T_chunkLoad_run, this);
 
-            // initialize statistics
+            // initialize statistics to nothing
             stats.n_chunks = 0;
             stats.t_chunks = 0.0;
         }
@@ -148,7 +143,6 @@ namespace Blok {
         ~LocalServer() {
             // remove our generator
             delete worldGen;
-
 
             // delete all loaded chunks
             for (auto& entry : loadedChunks) {
@@ -167,54 +161,7 @@ namespace Blok {
 
         // this is the target that should be ran all the time, by the T_chunkLoad thread,
         //   which attempts to service the chunk loader
-        void T_chunkLoad_run() {
-            while (true) {
-                struct timespec tim;
-                // wait for a second
-                tim.tv_sec = 0;
-                // run every 100 ms
-                tim.tv_nsec = 25 * 1000000;
-
-                // wait until there was something
-                while (chunkRequests.size() == 0) {
-                    nanosleep(&tim, NULL);
-                }
-
-
-                L_chunks.lock();
-
-                auto it = chunkRequests.cbegin();
-                int ct = 0;
-
-                chunkRequestsInProgress.clear();
-
-                // grab off some chunk requests
-                while (it != chunkRequests.cend() && ct < 8) {
-                    chunkRequestsInProgress.insert(*it);
-                    chunkRequests.erase(it++);
-                    ct++;
-                }
-
-                L_chunks.unlock();
-
-                Map<ChunkID, Chunk*> gen;
-
-                for (auto cid : chunkRequestsInProgress) {
-                    gen[cid] = worldGen->getChunk(cid);
-                }
-
-                // store them back
-
-                L_chunks.lock();
-                for (auto elem : gen) {
-                    loadedChunks[elem.first] = elem.second;
-                }
-                chunkRequestsInProgress.clear();
-                L_chunks.unlock();
-
-            }
-
-        }
+        void T_chunkLoad_run();
 
     };
 

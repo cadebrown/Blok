@@ -2,6 +2,8 @@
 
 #include "Blok/Blok.hh"
 
+#include "Blok/Audio.hh"
+
 // for vararg parsing
 #include <stdarg.h>
 
@@ -237,6 +239,14 @@ bool initAll() {
         return false;
     }
 
+    if (Pa_Initialize() != paNoError) {
+        blok_error("Failed to initialize PortAudio!");
+        return false;
+    }
+
+
+    int numDevices = Pa_GetDeviceCount();
+    blok_info("PortAudio: %i devices", numDevices);
 
     // do some error checks
     if (check_GL()) {
@@ -458,6 +468,15 @@ int main(int argc, char** argv) {
 
     // get time
     double everyT = getTime();
+
+    Audio::Buffer* buf = Audio::Buffer::loadConst("assets/audio/Theme.ogg");
+
+    // create an engine
+    Audio::Engine* eng = new Audio::Engine();
+
+    eng->curBufPlays.push_back(Audio::BufferPlay(buf));
+
+
 
     while (client->frame()) {
         

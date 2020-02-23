@@ -10,6 +10,9 @@ add_executable (Blok
     # rendering utility
     render/Texture.cc render/FontTexture.cc render/UIText.cc render/Mesh.cc render/ChunkMesh.cc render/Shader.cc render/Target.cc
 
+    # audio utility
+    audio/Buffer.cc audio/Engine.cc
+
     # world generation routines
     WG/Default.cc WG/Flat.cc
 )

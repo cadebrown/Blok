@@ -1,4 +1,8 @@
-/* Server.cc - implementation of the server protocol */
+/* Server.cc - implementation of the server protocol 
+ *
+ * Contains 'LocalServer' class implementation
+ * 
+ */
 
 #include <Blok/Server.hh>
 
@@ -154,5 +158,55 @@ bool LocalServer::raycastBlock(Ray ray, float maxDist, RayHit& hitInfo) {
     return false;
 }
 
+
+// this is the target that should be ran all the time, by the T_chunkLoad thread,
+//   which attempts to service the chunk loader
+void LocalServer::T_chunkLoad_run() {
+    while (true) {
+        struct timespec tim;
+        // wait for a second
+        tim.tv_sec = 0;
+        // run every 100 ms
+        tim.tv_nsec = 25 * 1000000;
+
+        // wait until there was something
+        while (chunkRequests.size() == 0) {
+            nanosleep(&tim, NULL);
+        }
+
+
+        L_chunks.lock();
+
+        auto it = chunkRequests.cbegin();
+        int ct = 0;
+
+        chunkRequestsInProgress.clear();
+
+        // grab off some chunk requests
+        while (it != chunkRequests.cend() && ct < 8) {
+            chunkRequestsInProgress.insert(*it);
+            chunkRequests.erase(it++);
+            ct++;
+        }
+
+        L_chunks.unlock();
+
+        Map<ChunkID, Chunk*> gen;
+
+        for (auto cid : chunkRequestsInProgress) {
+            gen[cid] = worldGen->getChunk(cid);
+        }
+
+        // store them back
+
+        L_chunks.lock();
+        for (auto elem : gen) {
+            loadedChunks[elem.first] = elem.second;
+        }
+        chunkRequestsInProgress.clear();
+        L_chunks.unlock();
+
+    }
+}
 
 };

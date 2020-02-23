@@ -50,7 +50,6 @@ static void glfw_resize_callback(GLFWwindow* window, int w, int h) {
 // callback to be called when the window's framebuffer (i.e. output) is resized, so update
 //   the area openGL is rendering to
 static void glfw_fbresize_callback(GLFWwindow* window, int width, int height) {
-    
     //glViewport(0, 0, width, height);
 }
 
@@ -77,6 +76,8 @@ Client::Client(Server* server, int w, int h) {
         blok_error("Failed to create GLFW Window!");
     }
 
+    // technically, we may request full screen or something, so the size
+    //   may not be w x h
     glfwGetWindowSize(gfx.window, &w, &h);
 
     // set it to focused
@@ -120,7 +121,7 @@ Client::Client(Server* server, int w, int h) {
     // just check the errors
     check_GL();
 
-    // add some information
+    // add some information to the output
     blok_info("GFX Libs: OpenGL: %s, GLSL: %s", glGetString(GL_VERSION), glGetString(GL_SHADING_LANGUAGE_VERSION));
 
 }
@@ -142,6 +143,9 @@ bool Client::frame() {
 
     // cap it at .1ms to avoid /0 errors, etc
     if (dt < .0001) dt = .0001;
+
+    // calculate & update the smoothFPS value
+    smoothFPS = (1 - dt) * smoothFPS + 1;
 
     // amount (in radians) the pitch has to be within
     const float pitch_slop = .01f;
@@ -177,36 +181,35 @@ bool Client::frame() {
             
             // get the current local chunk ID
             ChunkID cid = {rendid.X + X, rendid.Z + Z};
-            //ChunkID cid = {X, Z};
 
-            // get our chunk
-            //Chunk* chunk = server->loadChunk(server->worlds["world"], cid);
+            // get our chunk from the server
             Chunk* chunk = server->getChunk(cid);
-            // now, render it
+
+            // now, render it, if it is currently loaded
             if (chunk != NULL) gfx.renderer->renderChunk(cid, chunk);
 
         }
     }
 
-    // now, allow time for the server to do this (2.5 ms)
-    //server->processChunkRequests(0.0025);
-
-    // capture information about the hit
+    // capture information about what we are looking at
     RayHit hit;
+
+    // the reaching distance the player can interact with things in
+    float reachDist = 10.0f;
     
-    // perform a raycastBlock
-    if (server->raycastBlock(Ray(gfx.renderer->pos, gfx.renderer->forward), 20.0f, hit)) {
+    // perform a raycastBlock on the server and see what we hit
+    if (server->raycastBlock(Ray(gfx.renderer->pos, gfx.renderer->forward), reachDist, hit)) {
+
+        // render the wireframe placeholder, so you can see what you would interact with
         Render::Mesh* outline = Render::Mesh::loadConst("assets/obj/UnitCubeOutline.obj");
         gfx.renderer->renderMesh(outline, glm::translate(vec3(hit.blockPos)));
-
-
 
         // test debug line
         //gfx.renderer->renderDebugLine(hit.pos + vec3(0.5) + 0.5f * hit.normal, hit.pos + vec3(0.5) + 1.0f * hit.normal);
         //gfx.renderer->renderDebugLine(hit.pos, hit.pos + 0.5f * hit.normal);
         //printf("%f,%f,%f\n", hit.normal.x, hit.normal.y, hit.normal.z);
 
-
+        // check if you just clicked down the right button
         if (input.mouseButtons[GLFW_MOUSE_BUTTON_RIGHT] && !input.lastMouseButtons[GLFW_MOUSE_BUTTON_RIGHT]) {
             // place block
 
@@ -232,7 +235,9 @@ bool Client::frame() {
         }
 
     } else {
+        // we didn't hit, so make sure we set it to air
         hit.blockData = {ID::AIR};
+        hit.normal = {0, 0, 0};
     }
 
     // draw coordinate axes
@@ -248,27 +253,8 @@ bool Client::frame() {
     //gfx.renderer->renderMesh(sph, glm::translate(vec3(vec3i(hittarget)) + vec3(0.5, 0.5, 0.5)) * glm::scale(vec3(0.8)));
 
     static Render::UIText* uit = new Render::UIText(Render::FontTexture::loadConst("assets/fonts/ForcedSquare.ttf"));
-    // smooth it out over time
-    smoothFPS = (1 - dt) * smoothFPS + 1;
 
-
-/*
-
-    // info screen
-    char tmp[2048];
-    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %.1f, %.1f, %.1f\nchunk: %+i,%+i\nfps: %.1lf\nhit: %s\nlooking_at: %.1f,%.1f,%.1f\nlooking_nrm: %.1f,%.1f,%.1f\ntris: %s\n", 
-        BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
-        gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
-        rendid.X, rendid.Z,
-        smoothFPS,
-        BlockProperties::all[hit.blockData.id]->name.c_str(),
-        hit.pos.x, hit.pos.y, hit.pos.z,
-        hit.normal.x, hit.normal.y, hit.normal.z,
-        formatUnits(gfx.renderer->stats.n_tris, {"", "k", "m", "g"}).c_str()
-    );
-*/
-
-    // info screen
+    // info screen, which should eventually only be enabled in debug mode
     char tmp[2048];
     snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %+.1f, %+.1f, %+.1f, chunk: %+i,%+i\nhit: %s\nfps: %.1lf, tris: %s\n", 
         BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
@@ -279,11 +265,14 @@ bool Client::frame() {
         formatUnits(gfx.renderer->stats.n_tris, {"", "k", "m", "g"}).c_str()
     );
 
+    // now, set the information text to this
     uit->text = tmp;
+    // and render it at the top left of the screen
     gfx.renderer->renderText({10, gfx.renderer->height-10}, uit);
 
     // tell it we are done, and that we can render a frame
     gfx.renderer->renderFrame();
+
 
     // clear input
     for (int i = 0; i < GLFW_KEY_LAST; ++i) {
@@ -338,11 +327,10 @@ bool Client::frame() {
     dt = ctime - lastTime;
     lastTime = ctime;
 
-    if (dt > 1.0f/15.0f && N_frames > 5) {
+    if (dt > 1.0f/15.0f && N_frames > 5 && gfx.wasFocused && gfx.isFocused) {
         // only print every so often
         static double nextPrintTime = 0.0;
         if (getTime() > nextPrintTime) {
-
             blok_warn("Stutter detected!");
             nextPrintTime = getTime() + 1.0;
         }
@@ -356,9 +344,7 @@ bool Client::frame() {
         return false;
     }
 
-
     return true;
-
 }
 
 bool Client::getFullscreen() {
@@ -384,7 +370,6 @@ void Client::setFullscreen(bool toFullscreen) {
 
         // switch to full screen
         glfwSetWindowMonitor(gfx.window, gfx.monitor, 0, 0, mode->width, mode->height, mode->refreshRate );
-
 
     } else {
         // else we are coming from full screen, so restore window state

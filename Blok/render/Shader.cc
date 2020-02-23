@@ -163,46 +163,57 @@ void Shader::use()  {
 }
 
 int Shader::getUL(const String& name) {
-    return glGetUniformLocation(glProgram, name.c_str());
+    int res = glGetUniformLocation(glProgram, name.c_str());
+    /*if (res == -1) {
+        static Map<String, double> timesToPrint;
+        if (timesToPrint.find(name) == timesToPrint.end()) {
+            timesToPrint[name] = getTime() - 1;
+        }
+        if (getTime() > timesToPrint[name]) {
+            blok_error("Unknown uniform '%s'", name.c_str());
+            timesToPrint[name] = getTime() + 1;
+        }
+    }*/
+    return res;
 }
 
 /* uniform setting */
 
 void Shader::setBool(const String& name, bool value) {         
-    glUniform1i(glGetUniformLocation(glProgram, name.c_str()), (int)value); 
+    glUniform1i(getUL(name), (int)value); 
 }
 void Shader::setInt(const String& name, int value) { 
-    glUniform1i(glGetUniformLocation(glProgram, name.c_str()), value); 
+    glUniform1i(getUL(name), value); 
 }
 void Shader::setFloat(const String& name, float value) { 
-    glUniform1f(glGetUniformLocation(glProgram, name.c_str()), value); 
+    glUniform1f(getUL(name), value); 
 }
 void Shader::setVec2(const String& name, const vec2& value) { 
-    glUniform2fv(glGetUniformLocation(glProgram, name.c_str()), 1, &value[0]); 
+    glUniform2fv(getUL(name), 1, &value[0]); 
 }
 void Shader::setVec2(const String& name, float x, float y) { 
-    glUniform2f(glGetUniformLocation(glProgram, name.c_str()), x, y); 
+    glUniform2f(getUL(name), x, y); 
 }
 void Shader::setVec3(const String& name, const vec3& value) { 
-    glUniform3fv(glGetUniformLocation(glProgram, name.c_str()), 1, &value[0]); 
+    glUniform3fv(getUL(name), 1, &value[0]); 
 }
 void Shader::setVec3(const String& name, float x, float y, float z) { 
-    glUniform3f(glGetUniformLocation(glProgram, name.c_str()), x, y, z); 
+    glUniform3f(getUL(name), x, y, z); 
 }
 void Shader::setVec4(const String& name, const vec4& value) { 
-    glUniform4fv(glGetUniformLocation(glProgram, name.c_str()), 1, &value[0]); 
+    glUniform4fv(getUL(name), 1, &value[0]); 
 }
 void Shader::setVec4(const String& name, float x, float y, float z, float w) { 
-    glUniform4f(glGetUniformLocation(glProgram, name.c_str()), x, y, z, w); 
+    glUniform4f(getUL(name), x, y, z, w); 
 }
 void Shader::setMat2(const String& name, const mat2& mat) {
-    glUniformMatrix2fv(glGetUniformLocation(glProgram, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+    glUniformMatrix2fv(getUL(name), 1, GL_FALSE, &mat[0][0]);
 }
 void Shader::setMat3(const String& name, const mat3& mat) {
-    glUniformMatrix3fv(glGetUniformLocation(glProgram, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+    glUniformMatrix3fv(getUL(name), 1, GL_FALSE, &mat[0][0]);
 }
 void Shader::setMat4(const String& name, const mat4& mat) {
-    glUniformMatrix4fv(glGetUniformLocation(glProgram, name.c_str()), 1, GL_FALSE, &mat[0][0]);
+    glUniformMatrix4fv(getUL(name), 1, GL_FALSE, &mat[0][0]);
 }
 
 
