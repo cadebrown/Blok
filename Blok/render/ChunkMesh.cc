@@ -286,11 +286,11 @@ void ChunkMesh::update(Chunk* chunk) {
     // A great thing about structs is that their memory layout is sequential for all its items.
     // The effect is that we can simply pass a pointer to the struct and it translates perfectly to a vec3/2 array which
     // again translates to 3/2 floats which translates to a byte array.
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(ChunkMeshVertex), &vertices[0], GL_STATIC_DRAW);  
+    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(ChunkMeshVertex), &vertices[0], GL_DYNAMIC_DRAW);  
 
     // add the faces to the EBO
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, glEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * 3 * sizeof(int), &faces[0], GL_STATIC_DRAW);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, faces.size() * 3 * sizeof(int), &faces[0], GL_DYNAMIC_DRAW);
 
     // unbind this state
     glBindVertexArray(0);

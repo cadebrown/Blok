@@ -24,17 +24,16 @@ static int pa_fill_cb(
 
     sample* out = (sample*)outBuf;
 
-
     // just 0 it out
     for (int i = 0; i < N; ++i) {
         out[i] = {0, 0};
     }
 
-
     List<int> eraseIdx;
 
     // enter a critical section
-    engine->L_stream.lock();
+    bool couldLock = engine->L_stream.try_lock();
+    //engine->L_stream.lock();
 
     // now, sum all the sounds
     for (int bpi = 0; bpi < engine->curBufPlays.size(); ++bpi) {
@@ -62,7 +61,8 @@ static int pa_fill_cb(
         engine->curBufPlays.erase(engine->curBufPlays.begin() + eraseIdx[i]);
     }
 
-    engine->L_stream.unlock();
+    //engine->L_stream.unlock();
+    if (couldLock) engine->L_stream.unlock();
 
     // continue processing, i.e. do not stop the straem
     return paContinue;
@@ -74,7 +74,7 @@ static int pa_fill_cb(
 Engine::Engine() {
 
     hz = DEFAULT_HZ;
-    bufsize = 512;
+    bufsize = DEFAULT_BUFSIZE;
 
     L_stream.lock();
 
@@ -84,15 +84,30 @@ Engine::Engine() {
         return;
     }
 
+    // always stereo floats, interleaved
     out_param.channelCount = 2;
     out_param.sampleFormat = paFloat32;
+
+    // high latency, so no underruns are created
+    // TODO: expirement with other settings
     out_param.suggestedLatency = Pa_GetDeviceInfo(out_param.device)->defaultHighOutputLatency;
+
+    // do nothing host specific
     out_param.hostApiSpecificStreamInfo = NULL;
 
     PaError err;
 
     /* Open an audio I/O stream. */
-    err = Pa_OpenStream(&paStream, NULL, &out_param, (int)hz, bufsize, paClipOff, pa_fill_cb, (void*)this);
+    err = Pa_OpenStream(
+        &paStream, // stream
+        NULL, // input (none)
+        &out_param, // output (default device, the above settings)
+        (double)hz, // sample rate, use the default
+        (unsigned long)bufsize, // buffer size, use the default
+        paClipOff, // Disable their auto-clipping
+        pa_fill_cb, // the function to fill callback
+        (void*)this // the user pointer that is referenced in the callback
+    );
 
     if (err != paNoError) {
         blok_error("PortAudio: Couldn't open stream");

@@ -24,6 +24,9 @@ namespace Blok::Audio {
     // the default sampling rate
     const int DEFAULT_HZ = 44100;
 
+    // the default buffer size
+    const int DEFAULT_BUFSIZE = 512;
+
     // y= 10^(db/20)
     inline float db_to_coef(float db) {
         return powf(10.0f, db / 20.0f);
