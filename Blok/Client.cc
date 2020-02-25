@@ -113,6 +113,8 @@ Client::Client(Server* server, int w, int h) {
     if (glfwRawMouseMotionSupported()) glfwSetInputMode(gfx.window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     //glfwSetInputMode(gfx.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    check_GL();
+
     // initialize history things/state
     N_frames = 0;
 
