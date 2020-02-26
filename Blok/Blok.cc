@@ -374,6 +374,14 @@ void runTests() {
         }
     }
 
+    bool still = true;
+
+    while (still) {
+        server->L_chunks.lock();
+        still = server->chunkRequests.size() > 0 || server->chunkRequestsInProgress.size() > 0;
+        server->L_chunks.unlock();
+    }
+
     // make sure they are all loaded
     //while (server->processChunkRequests(1.0) > 0) ;
 
