@@ -201,6 +201,12 @@ bool Client::frame() {
         }
     }
 
+    // now, render entities
+    for (auto& kvp : server->loadedEntities) {
+        Render::RenderData rd = kvp.second->getRender();
+        gfx.renderer->renderData(rd);
+    }
+
     // capture information about what we are looking at
     RayHit hit;
 
@@ -212,7 +218,10 @@ bool Client::frame() {
 
         // render the wireframe placeholder, so you can see what you would interact with
         Render::Mesh* outline = Render::Mesh::loadConst("assets/obj/UnitCubeOutline.obj");
-        gfx.renderer->renderMesh(outline, glm::translate(vec3(hit.blockPos)));
+        Render::Texture* tblack = Render::Texture::loadConst("assets/tex/black.png");
+        //gfx.renderer->renderMesh(outline, glm::translate(vec3(hit.blockPos)));
+        Render::RenderData rds = Render::RenderData(outline, glm::translate(vec3(hit.blockPos)), tblack);
+        gfx.renderer->renderData(rds);
 
         // test debug line
         //gfx.renderer->renderDebugLine(hit.pos + vec3(0.5) + 0.5f * hit.normal, hit.pos + vec3(0.5) + 1.0f * hit.normal);

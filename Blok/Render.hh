@@ -436,6 +436,30 @@ namespace Blok::Render {
     };
 
 
+    // RenderData : a class that can be used to render most models/entities
+    // Give this to the renderer, so it can know what resources to use
+    struct RenderData {
+
+        // The mesh
+        Mesh* mesh;
+
+        // the transform
+        mat4 T;
+
+        // the diffuse texture
+        Texture* texDiffuse;
+
+        // Construct a new RenderData
+        RenderData(Mesh* mesh=NULL, mat4 T=mat4(1), Texture* texDiffuse=NULL) {
+            this->mesh = mesh;
+            this->T = T;
+            this->texDiffuse = texDiffuse;
+        }
+
+
+    };
+
+
     // Renderer : a construct for rendering the entire game state, including chunks, entities, 
     //   GUIs, markup, etc
     // This should be the primary object calling OpenGL rendering commands
@@ -489,10 +513,13 @@ namespace Blok::Render {
             // all requested chunks that need to be rendered
             Map<ChunkID, Chunk*> chunks;
 
-
             // the list of misc. meshes to render
             // See here: https://computergraphics.stackexchange.com/questions/37/what-is-the-cost-of-changing-state/46#46
-            Map<Mesh*, List<mat4> > meshes;
+            //Map<Mesh*, List<mat4> > meshes;
+
+            // list of renderdata to render, keyed on their mesh
+            Map<Mesh*, List<RenderData> > rds;
+
 
             // list of strings to render on screen along with their positions
             Map<FontTexture*, List< Pair<vec2, UIText*> > > texts;
@@ -637,7 +664,10 @@ namespace Blok::Render {
 
         
         // render a mesh with a given transform
-        void renderMesh(Mesh* mesh, mat4 T);
+        //void renderMesh(Mesh* mesh, mat4 T);
+
+        // render a render data
+        void renderData(RenderData& data);
 
         // render a 'debug' line, i.e. a 1px line with a given start & end point, with a color
         void renderDebugLine(vec3 start, vec3 end, vec3 col={1, .4, .3});
@@ -647,6 +677,7 @@ namespace Blok::Render {
 
         // request for the renderer to render a chunk of the world
         void renderChunk(ChunkID id, Chunk* chunk);
+
 
 
         // finalize, and render out the entire queue

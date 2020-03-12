@@ -14,13 +14,13 @@ layout (location = 3) out vec4 gNormal;
 
 uniform sampler2D texDiffuse;
 
-uniform vec4 col;
+//uniform vec4 col;
 
 void main() {
 
     // get the color
-    //vec4 col = texture(texDiffuse, fUV);
-    vec4 col = vec4(0, 0, 0, 1);
+    vec4 col = texture(texDiffuse, fUV);
+    //vec4 col = vec4(1, 0, 0, 1);
 
     vec3 N = normalize(fTBN[2]);
     //vec3 ldir = normalize(vec3(0, -1, 1));

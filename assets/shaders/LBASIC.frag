@@ -38,6 +38,7 @@ void main() {
     vec4 sun_col = diff * (la_amb + la_sun * max(0, -dot(N, ldir)));
 
 
+    /*
     // 3: do depth fog
     float dep = wpos.w - 1;
     if (dep < 0) dep = 256;
@@ -50,10 +51,12 @@ void main() {
     float attn = 1 - exp(-(a * dep) * (a * dep));
     if (attn < 0) attn = 0;
     attn *= 0.4;
-    
-    //dep = dep * 0.45;
 
     gColor = sun_col * (1 - attn) + vec4(vec3(attn), 1);
+    gColor.w = 1;
+    */
+    gColor = sun_col;
+    
     //gColor = vec4(N, 1.0);
     //gColor = vec4(vec3(wpos.w), 1.0);
     //gColor = vec4(vec3(sunDep), 1);

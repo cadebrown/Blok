@@ -14,6 +14,8 @@
 
 #include <Blok/Render.hh>
 
+#include <Blok/Entity.hh>
+
 namespace Blok::Render {
 
 // resize the rendering engine to a new output size
@@ -36,16 +38,22 @@ void Renderer::renderChunk(ChunkID id, Chunk* chunk) {
     queue.chunks[id] = chunk;
 }
 
-// render a mesh with a transform
-void Renderer::renderMesh(Mesh* mesh, mat4 T) {
+// render a render data
+void Renderer::renderData(RenderData& data) {
+    // for now, just render the given mesh
+    if (!data.mesh) {
+        blok_warn("Attempted to renderData with mesh==NULL!");
+        return;
+    }
 
     // ensure there is a list for the current mesh
-    if (queue.meshes.find(mesh) == queue.meshes.end()) {
-        queue.meshes[mesh] = {};
+    if (queue.rds.find(data.mesh) == queue.rds.end()) {
+        queue.rds[data.mesh] = {};
     }
 
     // now, push it on that list, so we mark it for rendering
-    queue.meshes[mesh].push_back(T);
+    queue.rds[data.mesh].push_back(data);
+
 }
 
 // render some text
@@ -317,6 +325,9 @@ void Renderer::renderFrame() {
     // clear the render target from last frame
     glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
 
+    // now, set background color
+    glClearColor(160/255.0f, 224/255.0f, 254/255.0f, 1.0f);
+
 
     // use our geometry shader
     shaders["GEOM_ChunkMesh"]->use();
@@ -349,6 +360,7 @@ void Renderer::renderFrame() {
             glBindVertexArray(cm->glVAO);
             glDrawElements(GL_TRIANGLES, cm->faces.size() * 3, GL_UNSIGNED_INT, 0);
 
+     
             // add the number of triangles we requested to render
             stats.n_tris += cm->faces.size();
         }
@@ -364,19 +376,17 @@ void Renderer::renderFrame() {
     shaders["GEOM_Mesh"]->setMat4("gPV", gPV);
 
     // loop through mesh/transform requests
-    for (const Pair< Mesh*, List<mat4> >& MTs : queue.meshes) {
+    for (const Pair< Mesh*, List<RenderData> >& MTs : queue.rds) {
 
         // bind the current mesh
         glBindVertexArray(MTs.first->glVAO); 
 
-        vec4 col = vec4(0.0f, 0.0f, 0.0f, 1.0f);
         // render all the transforms
         // TODO: we could put them into a VBO
-        for (mat4 T : MTs.second) {
-            shaders["GEOM_Mesh"]->setVec4("col", col);
-            shaders["GEOM_Mesh"]->setMat4("gM", T);             
+        for (RenderData T : MTs.second) {
+            shaders["GEOM_Mesh"]->setMat4("gM", T.T);             
+
             glDrawElements(GL_TRIANGLES, MTs.first->faces.size() * 3, GL_UNSIGNED_INT, 0);
-            col.r = fmodf(col.r + 0.1f, 1.0f);
 
             stats.n_tris += MTs.first->faces.size();
         }
@@ -538,7 +548,7 @@ void Renderer::renderFrame() {
     // remove all chunks requested for render
     queue.chunks.clear();
     // clear all requested meshes
-    queue.meshes.clear();
+    queue.rds.clear();
     // clera all tests
     queue.texts.clear();
 

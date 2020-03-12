@@ -23,6 +23,9 @@
 // we use the WG protocol for generating worlds
 #include <Blok/WG.hh>
 
+// include entity protocol
+#include <Blok/Entity.hh>
+
 // for MP processing
 #include <mutex> 
 #include <thread>
@@ -57,6 +60,9 @@ namespace Blok {
         // NOTE: do not modify this variable directly; either use `getChunk()`, or lock `L_chunks` for
         //   a critical section
         Map<ChunkID, Chunk*> loadedChunks;
+
+        // A map between the unique id's and the entity
+        Map<UUID, Entity*> loadedEntities;
 
         // If the chunk is currently loaded, just return a pointer to that chunk, which can be modified (see Blok.hh)
         // If it is not loaded, the behaviour depends on the 'request' parameter
@@ -97,6 +103,10 @@ namespace Blok {
         // In the case that it did hit something, also set `hitInfo` to the relevant data about the collision
         // See `Blok.hh`, specifically around `struct RayHit` for more information
         virtual bool raycastBlock(Ray ray, float dist, RayHit& hitInfo) = 0;
+
+        void addEntity(Entity* ent) {
+            loadedEntities[ent->uuid] = ent;
+        }
 
     };
 

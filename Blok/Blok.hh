@@ -110,6 +110,9 @@ namespace Blok {
     template<typename K, typename V>
     using Map = std::map<K, V>;
 
+    // A unique identifier
+    using UUID = String;
+
     /* CONSTANTS */
 
     // current build number
@@ -168,6 +171,9 @@ namespace Blok {
         STONE      = 3,
 
     };
+
+    // forward declaration
+    class Entity;
 
 
     // BlockProperties - static properties of all blocks of a given type
@@ -305,6 +311,8 @@ namespace Blok {
         // }
         BlockData* blocks;
 
+        // the map of entities in a given chunk
+        Map<UUID, Entity*> entities;
 
         // rcache - the render cache, meant to be mainly managed by the rendering engine
         //   to improve efficiency

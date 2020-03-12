@@ -481,7 +481,10 @@ int main(int argc, char** argv) {
     /*Audio::Engine* eng = new Audio::Engine();*/
     //eng->curBufPlays.push_back(Audio::BufferPlay(buf));
 
+    Entity* ent = new ItemEntity((UUID)"ABC");
+    server->addEntity(ent);
 
+    ent->setPos(vec3(16, 100, 16));
 
     while (client->frame()) {
         
