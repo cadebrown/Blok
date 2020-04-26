@@ -21,6 +21,8 @@ For textures/objects/effects/fonts see the `assets/` folder
 
 `Blok` requires the libraries: glfw3*, assimp*, portaudio*, freetype*, and OpenGL. ("*" indicates that the dependency can be built locally & statically). So, as long as you have OpenGL headers
 
+`sudo apt install org-dev libglu1-mesa-dev libvorbis-dev libjack-dev libasound2-dev`
+
 ## Compiling
 
 First, run `./build_libs.sh` this will build glfw3, assimp, portaudio, freetype, and their dependencies as static libraries
