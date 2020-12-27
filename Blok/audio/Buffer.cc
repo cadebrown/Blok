@@ -52,6 +52,7 @@ Buffer* Buffer::loadConst(const String& fname) {
                 continue;
             }
 
+            channels = -1;
             // current position in pSampleData
             int psn = 0;
 
@@ -61,9 +62,9 @@ Buffer* Buffer::loadConst(const String& fname) {
                 float **outputs;
                 int _chn;
                 n = stb_vorbis_get_frame_float(v, &_chn, &outputs);
-                channels = _chn;
                 if (n == 0) break;
 
+                channels = _chn;
                 totalPCMFrameCount += n;
 
                 pSampleData = (float*)realloc(pSampleData, sizeof(*pSampleData) * channels * totalPCMFrameCount);
@@ -78,6 +79,7 @@ Buffer* Buffer::loadConst(const String& fname) {
                 // move forward
                 psn += n;
             }
+            if (channels < 0) channels = 2;
 
             stb_vorbis_close(v);
 
