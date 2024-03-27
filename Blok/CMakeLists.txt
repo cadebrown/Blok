@@ -12,6 +12,7 @@ add_executable (Blok
 
     # audio utility
     audio/Buffer.cc audio/Engine.cc
+    src/gl.c
 
     # world generation routines
     WG/Default.cc WG/Flat.cc

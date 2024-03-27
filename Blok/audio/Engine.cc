@@ -78,7 +78,7 @@ Engine::Engine() {
 
     L_stream.lock();
 
-    out_param.device = Pa_GetDefaultOutputDevice();
+    out_param.device = paNoDevice;//Pa_GetDefaultOutputDevice();
     if (out_param.device == paNoDevice) {
         blok_error("PortAudio: No default output device!");
         return;
@@ -90,7 +90,7 @@ Engine::Engine() {
 
     // high latency, so no underruns are created
     // TODO: expirement with other settings
-    out_param.suggestedLatency = Pa_GetDeviceInfo(out_param.device)->defaultHighOutputLatency;
+    //out_param.suggestedLatency = Pa_GetDeviceInfo(out_param.device)->defaultHighOutputLatency;
 
     // do nothing host specific
     out_param.hostApiSpecificStreamInfo = NULL;
@@ -98,6 +98,7 @@ Engine::Engine() {
     PaError err;
 
     /* Open an audio I/O stream. */
+    /*
     err = Pa_OpenStream(
         &paStream, // stream
         NULL, // input (none)
@@ -108,13 +109,14 @@ Engine::Engine() {
         pa_fill_cb, // the function to fill callback
         (void*)this // the user pointer that is referenced in the callback
     );
+    */
 
     if (err != paNoError) {
         blok_error("PortAudio: Couldn't open stream");
         return;
     }
 
-    err = Pa_StartStream(paStream);
+//    err = Pa_StartStream(paStream);
     if (err != paNoError) {
         blok_error("PortAudio: Couldn't start stream");
         return;
@@ -129,9 +131,9 @@ Engine::Engine() {
 BufferPlay* Engine::play(Buffer* buf, bool loop) {
     BufferPlay* res = new BufferPlay(buf);
     res->loop = loop;
-    L_stream.lock();
-    curBufPlays.push_back(res);
-    L_stream.unlock();
+    //L_stream.lock();
+    //curBufPlays.push_back(res);
+    //L_stream.unlock();
     return res;
 }
 

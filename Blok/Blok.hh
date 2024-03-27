@@ -32,7 +32,8 @@
 #include <Blok/glm/glm.hpp>
 
 /* gl3w (OpenGL loader) */
-#include <Blok/gl3w/gl3w.h>
+//#include <Blok/gl3w/gl3w.h>
+#include <Blok/include/glad/gl.h>
 
 /* GLFW (Window Library) */
 #include <GLFW/glfw3.h>
@@ -146,7 +147,7 @@ namespace Blok {
 
     // format a given value, with unit post-fixes
     // for example, `formatUnits(10002, {"", "k", "m"})` formats as `10.002k`
-    String formatUnits(double val, const List<String>& names);
+    String formatUnits(double val, const List<String> names);
 
 
     /* GAME ENGINE SPECIFIC TYPE DEFS */

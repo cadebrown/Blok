@@ -16,7 +16,7 @@ For textures/objects/effects/fonts see the `assets/` folder
 ## Building On Linux/Unix
 
 ## Dependencies
-
+`
 `Blok` requires the programs: cmake (>=3.1), make, `g++/c++`
 
 `Blok` requires the libraries: glfw3*, assimp*, portaudio*, freetype*, and OpenGL. ("*" indicates that the dependency can be built locally & statically). So, as long as you have OpenGL headers

@@ -111,7 +111,7 @@ Shader::Shader(const String& vsFile, const String& fsFile) {
     const char* fsCode = fsSrc.c_str();
 
     // now, compile the opengl shaders
-    uint vsProg, fsProg;
+    GLuint vsProg, fsProg;
 
     // first, try compiling the vertex shader
     vsProg = glCreateShader(GL_VERTEX_SHADER);

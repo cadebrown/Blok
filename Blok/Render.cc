@@ -92,8 +92,8 @@ void Renderer::renderFrame() {
     gP = glm::perspective(
         glm::radians(FOV), // field of view
         (float)width / height, // aspect ratio
-        0.25f, // clip near distance
-        300.0f // clip far distance
+        0.1f, // clip near distance
+        1000.0f // clip far distance
     );
 
     /*gP = glm::ortho<float>(
@@ -541,7 +541,8 @@ void Renderer::renderFrame() {
     //glReadBuffer(GL_COLOR_ATTACHMENT1);
     glDrawBuffer(GL_BACK);
 
-    glBlitFramebuffer(0, 0, width, height, 0, 0, width, height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+    // TODO: WHY?
+    glBlitFramebuffer(0, 0, width, height, 0, 0, 2*width, 2*height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
 
     // now, clear the cache for the next run
 

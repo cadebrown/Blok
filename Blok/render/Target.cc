@@ -67,7 +67,7 @@ void Target::resize(int w, int h) {
     height = h;
 
     // resize all attachments
-    for (uint i = 0; i < glTex.size(); i++) {
+    for (int i = 0; i < glTex.size(); i++) {
         // resize the texture, erasing existng data
         glBindTexture(GL_TEXTURE_2D, glTex[i]);
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA32F, width, height, 0, GL_RGBA, GL_FLOAT, NULL);

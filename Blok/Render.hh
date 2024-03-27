@@ -63,7 +63,7 @@ namespace Blok::Render {
         pixel* pixels;
 
         // the OpenGL handle for the texture object
-        uint glTex;
+        GLuint glTex;
 
 
         // constructs a texture from a given image file
@@ -121,7 +121,7 @@ namespace Blok::Render {
 
 
         // the OpenGL handle for the texture object
-        uint glTex;
+        GLuint glTex;
 
         // the FreeType handle for the face object
         FT_Face ftFace;
@@ -189,7 +189,7 @@ namespace Blok::Render {
         FontTexture* font;
 
         // the OpenGL handles to the VAO and VBO objects for the array of screen quads to render
-        uint glVAO, glVBO;
+        GLuint glVAO, glVBO;
 
         // number of triangles to render
         int tris;
@@ -224,7 +224,7 @@ namespace Blok::Render {
 
     // Face - a collection of 3 indices into a vertex array, describing a triangular
     //   face for a mesh
-    using Face = glm::vec<3, uint>;
+    using Face = glm::vec<3, GLuint>;
 
     // Vertex - the most generic vertex, which supports all sorts of data send with it
     // NOTE: this is somewhat inefficient, as for most rendering tasks, you can get away with
@@ -270,7 +270,7 @@ namespace Blok::Render {
         // OpenGL handles to the Vertex Array Object, Vertex Buffer Object, and EBO
         // for rendering, you only care about VAO, and then drawing triangles from it,
         // which should have the data from 'vertices' and 'faces' in it
-        uint glVAO, glVBO, glEBO;
+        GLuint glVAO, glVBO, glEBO;
 
         // list of verteices, in no particular order. They are indexed by 'faces' list
         List<Vertex> vertices;
@@ -330,7 +330,7 @@ namespace Blok::Render {
         // OpenGL handles to the Vertex Array Object, Vertex Buffer Object, and EBO
         // for rendering, you only care about VAO, and then drawing triangles from it,
         // which should have the data from 'vertices' and 'faces' in it
-        uint glVAO, glVBO, glEBO;
+        GLuint glVAO, glVBO, glEBO;
 
         // list of verteices, in no particular order. They are indexed by 'faces' list
         List<ChunkMeshVertex> vertices;
@@ -368,7 +368,7 @@ namespace Blok::Render {
         static Shader* load(const String& vsFile, const String& fsFile);
 
         // OpenGL handle to the shader's program object
-        uint glProgram;
+        GLuint glProgram;
 
         // construct a shader given a file path for the vertex shader & fragment shader
         // NOTE: Don't use this, use the Shader::load() method instead
@@ -415,10 +415,10 @@ namespace Blok::Render {
         public:
 
         // OpenGL handles to the frame buffer object (FBO), and the depth buffer
-        uint glFBO, glDepth;
+        GLuint glFBO, glDepth;
 
         // List of OpenGL handle textures that are a part of the render target
-        List<uint> glTex;
+        List<GLuint> glTex;
 
         // This is the list of the GL_COLOR_ATTACHMENT* enumerations, describing the respective
         //   glTex entries
@@ -534,7 +534,7 @@ namespace Blok::Render {
         struct {
 
             // VAO/VBO for the debug lines
-            uint glLinesVAO, glLinesVBO;
+            GLuint glLinesVAO, glLinesVBO;
 
         } debug;
 

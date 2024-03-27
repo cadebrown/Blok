@@ -60,13 +60,13 @@ Client::Client(Server* server, int w, int h) {
     this->server = server;
 
     // create an audio engine
-    this->aEngine = new Audio::Engine();
+    //this->aEngine = new Audio::Engine();
 
     // for now, just play theme all the time
-    Audio::Buffer* aTheme = Audio::Buffer::loadConst("assets/audio/Theme.ogg");
+   /* Audio::Buffer* aTheme = Audio::Buffer::loadConst("assets/audio/Theme.ogg");
 
     Audio::BufferPlay* bplay = this->aEngine->play(aTheme, true);
-
+*/
     // store the monitor
     gfx.monitor = glfwGetPrimaryMonitor();
 
@@ -77,6 +77,11 @@ Client::Client(Server* server, int w, int h) {
     glfwWindowHint(GLFW_BLUE_BITS, mode->blueBits);
     glfwWindowHint(GLFW_REFRESH_RATE, mode->refreshRate);
     */
+
+   glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
+glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
+glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
+glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // create a window to render to
     gfx.window = glfwCreateWindow(w, h, "Blok", NULL, NULL);
@@ -92,8 +97,16 @@ Client::Client(Server* server, int w, int h) {
     glfwMakeContextCurrent(gfx.window);
     gfx.isFocused = true;
 
+    printf("STARTING GLAD...\n");
+if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress))
+{
+    printf("FAILED\n");
+}
+    printf("CHECKING OPENGL...\n");
+
+
     // 1 = vsync, 0 = as fast as possible
-    glfwSwapInterval(1); 
+   // glfwSwapInterval(1); 
 
     // set the window user pointer to this class so we can get it later
     glfwSetWindowUserPointer(gfx.window, this);
@@ -112,8 +125,8 @@ Client::Client(Server* server, int w, int h) {
     // raw mouse (i.e. no acceleration)
     if (glfwRawMouseMotionSupported()) glfwSetInputMode(gfx.window, GLFW_RAW_MOUSE_MOTION, GLFW_TRUE);
     //glfwSetInputMode(gfx.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-
-    check_GL();
+    printf("ASDFASDF\n");
+   // check_GL();
 
     // initialize history things/state
     N_frames = 0;
@@ -182,12 +195,12 @@ bool Client::frame() {
     ChunkID rendid = { (int)(floor(gfx.renderer->pos.x / CHUNK_SIZE_Z)), (int)(floor(gfx.renderer->pos.z / CHUNK_SIZE_Z)) };
 
     // view distance in chunks
-    int N = 6;
+    int N = 10;
     // render all these chunks
     for (int X = -N; X <= N; ++X) {
         for (int Z = -N; Z <= N; ++Z) {
 
-            if (X * X + Z * Z > N * N + 5) continue;
+            if (X * X + Z * Z > N * N) continue;
             
             // get the current local chunk ID
             ChunkID cid = {rendid.X + X, rendid.Z + Z};
@@ -282,18 +295,41 @@ bool Client::frame() {
     //gfx.renderer->renderMesh(sph, glm::translate(vec3(vec3i(hittarget)) + vec3(0.5, 0.5, 0.5)) * glm::scale(vec3(0.8)));
 
     static Render::UIText* uit = new Render::UIText(Render::FontTexture::loadConst("assets/fonts/ForcedSquare.ttf"));
-
+    //std::string ddd = formatUnits(gfx.renderer->stats.n_tris, {"", "k", "m", "g"});
     // info screen, which should eventually only be enabled in debug mode
     char tmp[2048];
+    /*
     snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %+.1f, %+.1f, %+.1f, chunk: %+i,%+i\nhit: %s\nfps: %.1lf, tris: %s\n", 
         BUILD_MAJOR, BUILD_MINOR, BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
         gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
         rendid.X, rendid.Z,
         BlockProperties::all[hit.blockData.id]->name.c_str(),
         smoothFPS,
-        formatUnits(gfx.renderer->stats.n_tris, {"", "k", "m", "g"}).c_str()
+        ddd.c_str()
+    );
+    */
+   /*
+    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %+.1f, %+.1f, %+.1f, chunk: %+i,%+i\nhit: %s\nfps: %.1lf, tris: %s\n", 
+        (int)BUILD_MAJOR, (int)BUILD_MINOR, (int)BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
+        gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
+        rendid.X, rendid.Z,
+        BlockProperties::all[hit.blockData.id]->name.c_str(),
+        smoothFPS,
+        (int)gfx.renderer->stats.n_tris
+    );
+*/
+
+    snprintf(tmp, sizeof(tmp)-1, "Blok v%i.%i.%i %s\npos: %+.1f, %+.1f, %+.1f\nchunk: %+i,%+i\nhit: %s\nfps: %.1lf\ntris: %i\n", 
+        (int)BUILD_MAJOR, (int)BUILD_MINOR, (int)BUILD_PATCH, BUILD_DEV ? "(dev)" : "(release)",
+        gfx.renderer->pos.x, gfx.renderer->pos.y, gfx.renderer->pos.z,
+        (int)rendid.X, (int)rendid.Z,
+        BlockProperties::all[hit.blockData.id]->name.c_str(),
+        smoothFPS,
+        (int)gfx.renderer->stats.n_tris
     );
 
+
+    //snprintf(tmp, sizeof(tmp)-1, "DUMMY");
     // now, set the information text to this
     uit->text = tmp;
     // and render it at the top left of the screen

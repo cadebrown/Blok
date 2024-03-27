@@ -32,7 +32,7 @@ FT_Library ftlib;
 // the map of block IDs to their properties
 Map<ID, BlockProperties*> BlockProperties::all;
 
-String formatUnits(double val, const List<String>& names) {
+String formatUnits(double val, const List<String> names) {
     bool isNeg = val < 0;
     if (isNeg) val = -val;
     int idx;
@@ -42,7 +42,7 @@ String formatUnits(double val, const List<String>& names) {
     }
 
     char tmpbuf[256];
-    sprintf(tmpbuf, "%.3lf%s", val, names[idx].c_str());
+    snprintf(tmpbuf, 200, "%.3lf%s", val, names[idx].c_str());
     return String(tmpbuf);
 }
 
@@ -158,11 +158,13 @@ static String GL_getErrorString(GLenum err) {
         case GL_INVALID_VALUE: return "GL_INVALID_VALUE";
 
         case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION";
+        /*
 
         case GL_STACK_OVERFLOW: return "GL_STACK_OVERFLOW";
 
         case GL_STACK_UNDERFLOW: return "GL_STACK_UNDERFLOW";
 
+        */
         case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY";
 
         // opengl 3 errors (1)
@@ -206,15 +208,18 @@ List<String> paths = { ".", ".." };
 // initialize everyting in Blok
 bool initAll() {
 
+/*
     // initialize openGL stuffs
     gl3wInit();
+    printf("HERE!!\n");
 
     // make sure our target version is supported
     if (gl3wIsSupported(3, 3) != 0) {
         blok_error("Failed to init OpenGL v3.3");
         return false;
     }
-
+*/
+    printf("HERE!!\n");
     // initialize GLFW, for windows/etc
     if (!glfwInit()) {
         blok_error("Failed to initialize GLFW!");
@@ -228,17 +233,22 @@ bool initAll() {
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+
    
     // various initializations
     // reset the GLFW time
     glfwSetTime(0.0);
+
+    printf("INITLAIZED GLFW\n");
+
 
     // initialize FreeType (FT) library for font loading & drawing
     if (FT_Init_FreeType(&ftlib)) {
         blok_error("Failed to initialize FreeType!");
         return false;
     }
-
+    printf("INTIIALIZED FREETYPE\n");
+/*
     if (Pa_Initialize() != paNoError) {
         blok_error("Failed to initialize PortAudio!");
         return false;
@@ -253,6 +263,7 @@ bool initAll() {
         blok_error("Failed to initialize: OpenGL Error Encountered!");
         return false;
     }
+*/
     
     // now, set up block info
 
@@ -459,9 +470,9 @@ int main(int argc, char** argv) {
 
     // create a local server
     LocalServer* server = new LocalServer();
-
-    Client* client = new Client(server, 1280, 800);
-
+    printf("SERVER: %p\n", server);
+    Client* client = new Client(server, 1600, 1200);
+    printf("CLKIENT: %p\n", client);
     // just update
     client->gfx.renderer->pos = vec3(0, 14, -10);
 
@@ -483,9 +494,10 @@ int main(int argc, char** argv) {
 
     Entity* ent = new ItemEntity((UUID)"ABC");
     server->addEntity(ent);
+            client->gfx.renderer->pos = vec3(1e9, 80, 0);
 
     ent->setPos(vec3(16, 100, 16));
-
+    printf("STARTING...\n");
     while (client->frame()) {
         
         vec3 moveZ = client->gfx.renderer->forward;

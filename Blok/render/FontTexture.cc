@@ -121,8 +121,8 @@ void FontTexture::addChar(char c) {
     // is `FT_PIXEL_MODE_GRAY' (i.e., not a bitmap font)
 
     // iterate through the bitmap for this character
-    for (uint py = 0; py < bitmap->rows; ++py) {
-        for (uint px = 0; px < bitmap->width; ++px) {
+    for (int py = 0; py < bitmap->rows; ++py) {
+        for (int px = 0; px < bitmap->width; ++px) {
             pixel cur = pixel(bitmap->buffer[(bitmap->rows - py - 1) * bitmap->width + px]);
             pixels[(o_py + py) * width + (o_px + px)] = cur;
         }
